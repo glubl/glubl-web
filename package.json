@@ -29,6 +29,8 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@types/gun": "^0.9.3",
+		"gun": "^0.2020.1239",
 		"tailwind-merge": "^1.8.1"
 	}
 }
