@@ -2,7 +2,11 @@
 module.exports = {
   content: ["./src/**/*.{html,js,svelte,ts}"],
   theme: {
-    extend: {},
+    extend: {
+      backgroundImage: {
+        'dotted': 'radial-gradient(var(--tw-gradient-from) 0.5px, var(--tw-gradient-to) 0.5px)',
+      }
+    },
     backdropFilter: {
       'none': 'none',
       'blur': 'blur(20px)',
@@ -16,4 +20,7 @@ module.exports = {
     require("daisyui"),
     require("prettier-plugin-tailwindcss")
   ],
+  daisyui: {
+    themes: ["light", "dark", "cupcake", "bumblebee", "emerald", "corporate", "synthwave", "retro", "cyberpunk", "valentine", "halloween", "garden", "forest", "aqua", "lofi", "pastel", "fantasy", "wireframe", "black", "luxury", "dracula", "cmyk", "autumn", "business", "acid", "lemonade", "night", "coffee", "winter"],
+  },
 };
