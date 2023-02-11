@@ -1,14 +1,8 @@
 <script lang="ts">
   import type { LayoutData } from './$types';
-  import { Icon } from '@steeze-ui/svelte-icon';
-  import { PaperAirplane, Bars3 } from '@steeze-ui/heroicons';
-  import { goto } from '$app/navigation';
 
   export let data: LayoutData;
   $: selectedFriend = data.selected
-  function setSelectedFriend(f: string) {
-    goto(`/chat/${f.replace(/#/g, '%23')}`)
-  }
 </script>
 
 <div class="drawer drawer-mobile">
@@ -40,13 +34,13 @@
       <!-- Friends -->
       {#each Object.entries(data.friends) as [id, friend] }
         <li class="pb-1">
-          <a href="#" on:click={()=>{setSelectedFriend(id)}} class={`!rounded-md p-2 ${id == selectedFriend ? "active" : ""}`}>
+          <a href={`/chat/${id.replace(/#/g, '%23')}`} class={`!rounded-md py-1 px-2 gap-x-2 flex flex-row items-center ${id == selectedFriend ? "active" : ""}`}>
             <div class="avatar online">
               <div class="w-8 mask mask-squircle">
                 <img src="{friend.profilePicture}" alt="">
               </div>
             </div>
-            <p class="">
+            <p class="text-md font-semibold m-0 flex">
               {friend.name}
             </p>
           </a>

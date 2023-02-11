@@ -22,97 +22,30 @@ export const userData: { [id: string]: User } = {
   }
 }
 
-export const userMessages: { [id: string]: { [ts: number]: Message } } = {
+export const userMessages: { [id: string]: { [ts: string]: Message } } = {
   "laracroft#4512": {
-    1672761690: {
-      "message": "It was said that you would, destroy the Sith, not join them.",
-      "ts": 1672761690,
+    1675184520000: {
+      "message": "It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. ",
+      "ts": 1675184520000,
       "by": userData["laracroft#4512"]
     },
-    1672761691: {
+    1675184521000: {
       "message": "It was you who would bring balance to the Force",
-      "ts": 1672761690,
+      "ts": 1675184521000,
       "by": userData["laracroft#4512"]
     },
-    1672761692: {
+    1675184525000: {
       "message": "Not leave it in Darkness",
-      "ts": 1672761690,
+      "ts": 1675184525000,
       "by": userData["laracroft#4512"]
-    },
-    1672761694: {
-      "message": "It was said that you would, destroy the Sith, not join them.",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761695: {
-      "message": "It was you who would bring balance to the Force",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761696: {
-      "message": "Not leave it in Darkness",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761697: {
-      "message": "It was said that you would, destroy the Sith, not join them.",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761698: {
-      "message": "It was you who would bring balance to the Force",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761699: {
-      "message": "Not leave it in Darkness",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761700: {
-      "message": "It was said that you would, destroy the Sith, not join them.",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761701: {
-      "message": "It was you who would bring balance to the Force",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761702: {
-      "message": "Not leave it in Darkness",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761703: {
-      "message": "It was said that you would, destroy the Sith, not join them.",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761704: {
-      "message": "It was you who would bring balance to the Force",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761705: {
-      "message": "Not leave it in Darkness",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761706: {
-      "message": "It was said that you would, destroy the Sith, not join them.",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761707: {
-      "message": "It was you who would bring balance to the Force",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
-    1672761708: {
-      "message": "Not leave it in Darkness",
-      "ts": 1672761690,
-      "by": userData["laracroft#4512"]
-    },
+    }
+  }
+}
+
+for (let index = 0; index < 10; index++) {
+  for (const [k,v] of Object.entries(userMessages["laracroft#4512"]).slice(-3)) {
+    let kk = parseInt(k)
+    userMessages["laracroft#4512"][`${kk+15000}`] = JSON.parse(JSON.stringify(v))
+    userMessages["laracroft#4512"][`${kk+15000}`].ts += 15000
   }
 }

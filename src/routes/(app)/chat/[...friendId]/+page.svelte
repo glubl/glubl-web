@@ -1,57 +1,86 @@
 <script lang="ts">
-  import { Svrollbar } from 'svrollbar';
+  import { Svrollbar } from '$lib/components/svrollbar';
   import type { PageData } from './$types';
   import { Icon } from '@steeze-ui/svelte-icon';
   import { PaperAirplane, Bars3 } from '@steeze-ui/heroicons';
-  import { onMount } from 'svelte';
+  import VirtualList from '@sveltejs/svelte-virtual-list';
+  import { onDestroy, onMount, tick } from 'svelte';
+  import * as dayjs from "dayjs";
 
   export let data: PageData;
   export let viewport: Element;
   export let contents: Element;
+
+  $: chats = ["dummy", "dummy", "dummy", ...Object.values(data.chats).sort((a, b) => a.ts - b.ts).map((v: any, i) => {v.index = i + 3; return v}), "dummy"]
+  onMount(() => {
+    viewport = document.querySelector("#chat-screen svelte-virtual-list-viewport")
+    contents = document.querySelector("#chat-screen svelte-virtual-list-contents")
+    console.log(chats)
+    setTimeout(() => {
+      viewport.scrollTo({top: viewport.scrollHeight, behavior: "auto"})
+    }, 1)
+  })
 </script>
 
 <style>
-  #chat-viewport {
+  #chat-screen :global(svelte-virtual-list-viewport) {
     /* hide scrollbar */
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  #chat-viewport::-webkit-scrollbar {
+  #chat-screen :global(svelte-virtual-list-viewport::-webkit-scrollbar) {
     /* hide scrollbar */
     display: none;
   }
-  #chat-screen > :global(.v-scrollbar) {
-    transform: translateY(16px);
+  #chat-screen :global(svelte-virtual-list-contents) {
+    padding-top: 200px;
   }
 </style>
 
 <div id="chat-screen" class="flex flex-col h-screen justify-end flex-1 w-full relative">
 
-  <!-- Chat -->   
-  <div bind:this={viewport} id="chat-viewport" class="w-full overflow-scroll relative">
-    <div bind:this={contents} id="chat-contents" class="w-full px-4 pb-8 pt-20">
-      {#each Object.entries(data.chats) as [ts, chat]}
-        <div class="chat chat-start">
-          <div class="chat-image avatar">
-            <div class="w-10 rounded-full">
-              <img alt={`${chat.by.name} profile picture`} src="{chat.by.profilePicture}" />
-            </div>
-          </div>
-          <div class="chat-bubble">{chat.message}</div>
+  <VirtualList items={chats} let:item={chat}>
+    {#if chat == "dummy"}
+      <div class="pl-4">
+        <div class="h-6"></div>
+      </div>
+    {:else if ((chat.ts - chats[chat.index-1].ts) < 60000)}
+      <div class="py-0.5 pr-8 flex flex-row w-full group hover:bg-base-200">
+        <div class="w-20 shrink-0 flex justify-center text-xs text-transparent group-hover:text-base-content pt-1">
+          {dayjs.unix(chat.ts / 1000).format("hh:mm A")}
         </div>
-      {/each}
-    </div>
-  </div>
+        <div class="flex flex-row items-start gap-x-2">
+          <div class="flex flex-col">
+            {chat.message}
+          </div>
+        </div>
+      </div>
+    {:else}
+      <div class="pr-8 hover:bg-base-200">
+        <div class="flex flex-row items-start mt-4 pb-1">
+          <div class="w-20 pt-2 h-10 flex shrink-0 items-center justify-center">
+            <img class="w-10 mask mask-circle mt-1" alt={`${chat.by.name} profile picture`} src="{chat.by.profilePicture}" />
+          </div>
+          <div class="flex flex-col">
+            <div class="flex flex-row gap-x-2 items-start">
+              <p class="font-semibold text-accent-content/80">{chat.by.name}</p>
+              <p class="text-xs mt-1.5 text-base-content/50">{dayjs.unix(chat.ts / 1000).format("DD/MM/YYYY h:m A")}</p>
+            </div>
+            {chat.message}
+          </div>
+        </div>
+      </div>
+    {/if}
+  </VirtualList>
 
   <Svrollbar 
-    margin={{top: 60, right: 2}} 
-    initiallyVisible={true} 
-    alwaysVisible={false} 
+    initiallyVisible={true}  
     {viewport} 
-    {contents} 
+    {contents}
+    margin={{top: 72, bottom: 10, right: 3}}
   />
   
-  <div class="prose flex flex-row items-center gap-x-4 w-[inherit] max-w-[inherit] py-4 px-4 backdrop-blur absolute shadow-lg top-0 bg-base-200/90">
+  <div id="header" class="prose flex flex-row items-center gap-x-4 w-[inherit] max-w-[inherit] py-4 px-4 backdrop-blur absolute shadow-lg top-0 bg-base-200/90">
     <label for="friend-list" class="h-fit w-fit btn btn-outline btn-base btn-sm drawer-button lg:hidden p-2 !outline-none !border-none">
       <Icon src="{Bars3}" theme='solid' class='color-gray-900 w-6 h-6' />
     </label>
@@ -62,8 +91,8 @@
   </div>
   
   <!-- Input -->
-  <div class="flex flex-row gap-x-2 bg-transparent mx-3 -translate-y-3">
-    <input type="text" placeholder="Message" class="flex-1 input input-bordered" />
+  <div class="flex flex-row bg-transparent mx-3 pb-4 btn-group">
+    <input type="text" placeholder="Message" class="flex-1 input input-bordered rounded-tr-none rounded-br-none" />
     <div class="btn btn-accent p-3">
       <Icon src="{PaperAirplane}" theme='solid' class='color-gray-900 object-contain aspect-square' />
     </div>
