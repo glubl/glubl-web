@@ -1,10 +1,9 @@
 <script lang="ts" type="module">
   import { goto } from "$app/navigation";
-  import { onMount } from "svelte";
   import auth from "@lib/auth";
 
   let loggedIn = !!localStorage.getItem("loggedIn");
-  onMount(() => loggedIn && goto("/home"));
+  loggedIn && goto("/home");
 
   let pair: string;
 </script>
