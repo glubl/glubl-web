@@ -2,7 +2,7 @@ import gun from "@lib/initGun"
 import SEA from "gun/sea"
 import type { Profile } from "./types"
 import type { ISEAPair } from "gun"
-import { loggedIn, key } from "./stores"
+import { currentUser, loggedIn, key } from "./stores"
 
 export const user = gun.user()
 
@@ -15,18 +15,16 @@ const auth = {
     async login(stringKeyPair: string) {
         const keyPair = JSON.parse(stringKeyPair)
         const res = user.auth(keyPair)
-        if (res.err) {
-            
-            return
-        }
         const isUser = res.is !== undefined
+        const gunUser = res.is
         loggedIn.set(true)
         key.set(keyPair)
+        currentUser.set(gunUser)
         /**
          * @warn @todo hide private from local storage
         */
         window.localStorage.setItem('key', stringKeyPair)
-        window.localStorage.setItem('currentUser', JSON.stringify(res.is).replace(/\%22/g,'"'))
+        window.localStorage.setItem('currentUser', JSON.stringify(gunUser).replace(/\%22/g,'"'))
         window.localStorage.setItem('loggedIn', `${isUser}`)
     },
 
