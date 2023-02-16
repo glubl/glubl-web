@@ -2,7 +2,7 @@ import gun from "@lib/initGun"
 import SEA from "gun/sea"
 import type { Profile } from "./types"
 import type { ISEAPair } from "gun"
-import { currentUser, loggedIn, key } from "./stores"
+import { InvalidPairError } from "./errors"
 
 export const user = gun.user()
 
@@ -13,19 +13,27 @@ const auth = {
      * @returns {void}
      */
     async login(stringKeyPair: string) {
-        const keyPair = JSON.parse(stringKeyPair)
-        const res = user.auth(keyPair)
-        const isUser = res.is !== undefined
-        const gunUser = res.is
-        loggedIn.set(true)
-        key.set(keyPair)
-        currentUser.set(gunUser)
-        /**
-         * @warn @todo hide private from local storage
-        */
-        window.localStorage.setItem('key', stringKeyPair)
-        window.localStorage.setItem('currentUser', JSON.stringify(gunUser).replace(/\%22/g,'"'))
-        window.localStorage.setItem('loggedIn', `${isUser}`)
+        try {
+            const keyPair = JSON.parse(stringKeyPair)
+            const res = user.auth(keyPair)
+            if (SEA.err || res.ing) {
+                throw new InvalidPairError()
+            }
+            const isUser = res.is !== undefined
+            const gunUser = res.is
+            /**
+             * @warn @todo hide private from local storage
+            */
+            window.localStorage.setItem('key', stringKeyPair)
+            window.localStorage.setItem('currentUser', JSON.stringify(gunUser).replace(/\%22/g,'"'))
+            window.localStorage.setItem('loggedIn', `${isUser}`)
+        } catch (error: any) {
+            if (error.name === "SyntaxError") {
+                throw new InvalidPairError()
+            } else {
+                throw Error("Error")
+            }
+        }
     },
 
     /**
@@ -39,13 +47,10 @@ const auth = {
         const userProfile: Profile = {'picture': '','username': username,'pub': pair.pub}
         gun.get('users')
             .get('~'+pair.pub)
-            .put({key: JSON.stringify(pair)})
             .put({contacts: null})
             .put({messages: null})
             .put({settings: null})
             .put({profile: JSON.stringify(userProfile)})
-        gun.get('users').get('profiles').put(userProfile)
-
         return stringPair
     },
 
@@ -62,7 +67,12 @@ const auth = {
 export function protectedRedirect() {
     // current pathname
     let pathname = location.pathname
-    if (!localStorage.getItem("loggedIn") && pathname !== "/login" && pathname !== "/register") {
+    if (
+        !localStorage.getItem("loggedIn") 
+        && !localStorage.getItem("currentUser") 
+        && pathname !== "/login" 
+        && pathname !== "/register"
+    ) {
         location.hash = ""
         location.assign("/login")
     }
