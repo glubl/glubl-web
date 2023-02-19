@@ -37,7 +37,7 @@
             href={`/chat`}
             on:click={async () => {
               selectedId.set(id);
-              invalidateAll();
+              await invalidateAll();
             }}
             data-friend-id={id}
             class={`!rounded-md py-1 px-2 gap-x-2 flex flex-row items-center ${

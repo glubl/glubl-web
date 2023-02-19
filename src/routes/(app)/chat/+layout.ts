@@ -1,7 +1,7 @@
 import { userData } from '$lib/mock/users';
 import type { LayoutLoad } from './$types';
 import "@src/lib/initGun"
-import { selectedId } from './stores';
+import { activeCallId, selectedId } from './stores';
 import { get } from 'svelte/store';
 
 type FriendsMap = {
@@ -20,6 +20,10 @@ function getSelectedFriend() {
   return get(selectedId) || getLastOpenedFriend()
 }
 
+function getActiveCall() {
+  return get(activeCallId)
+}
+
 const me: User = {
   profilePicture: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?cs=srgb&dl=pexels-pixabay-220453.jpg",
   name: "Andrew McEuler",
@@ -30,9 +34,11 @@ const me: User = {
 
 export const load = (({ url }) => {
   let selected = getSelectedFriend()
+  let activeCall = getActiveCall()
   return {
     friends: getFriends(),
     selected: selected,
+    activeCall: activeCall,
     me: me,
   };
 }) satisfies LayoutLoad;  

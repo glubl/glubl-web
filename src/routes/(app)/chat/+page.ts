@@ -1,5 +1,7 @@
 import { userData, userMessages } from '$lib/mock/users';
+import { get } from 'svelte/store';
 import type { PageLoad } from './$types';
+import { activeCallId } from './stores';
 
 
 type FriendsChat = {
@@ -22,11 +24,17 @@ function getFriendChat(friendId: string): FriendsChat {
   return userMessages[friendId] || {}
 }
 
+function toggleActiveCall(friendId?: string) {
+  get(activeCallId) ? activeCallId.set(null) : friendId && activeCallId.set(friendId)
+}
+
 export const load = (async ({ params, url, parent }) => {
-  let { friends, selected, me } = await parent()
+  let { friends, selected, activeCall, me } = await parent()
   return {
     chats: getFriendChat(selected),
-    friend: getFriendData(selected),
+    selectedFriend: getFriendData(selected),
+    activeCallFriend: activeCall && getFriendData(activeCall),
     me: me,
+    toggleCall: toggleActiveCall,
   };
 }) satisfies PageLoad;
