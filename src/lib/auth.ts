@@ -28,6 +28,7 @@ const auth = {
             window.localStorage.setItem('key', stringKeyPair)
             window.localStorage.setItem('currentUser', JSON.stringify(gunUser).replace(/\%22/g,'"'))
             window.localStorage.setItem('loggedIn', `${isUser}`)
+            console.log(await gun.user().get("profile").then())
         } catch (error: any) {
             if (error.name === "SyntaxError") {
                 throw new InvalidPairError()
@@ -49,8 +50,7 @@ const auth = {
           .put({contacts: null})
           .put({messages: null})
           .put({settings: null})
-          .get({profile: userProfile})
-          .put({'picture': '','username': username,'pub': pair.pub})
+          .put({profile: userProfile})
         return stringPair
     },
 

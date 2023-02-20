@@ -6,6 +6,7 @@ import "gun/lib/radix"
 import "gun/lib/radisk"
 import "gun/lib/store"
 import "gun/lib/rindexed"
+import "gun/lib/then"
 
 const options : GunOptions = {
     peers: ["https://gun.dirtboll.com/gun"],

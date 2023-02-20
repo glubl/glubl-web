@@ -7,3 +7,21 @@ export class InvalidPairError extends Error {
   }
 
 }
+
+export class NotAuthenticated extends Error {
+  constructor() {
+    super("Not authenticated")
+  }
+}
+
+export class SharedCreationFail extends Error {
+  constructor() {
+    super("Shared private key creation faied")
+  }
+}
+
+export class HashFail extends Error {
+  constructor() {
+    super("Object hash failed")
+  }
+}
