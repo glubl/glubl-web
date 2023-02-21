@@ -7,19 +7,22 @@
   let inputValue: string;
   let keypair: string;
   let errorMsg: string;
-  $: keypair, errorMsg;
+  let loading = false;
+  $: keypair, errorMsg, loading;
 
   let onLogin = () => {
+    loading = true;
     auth.login(inputValue).then(
       () => goto("/home"),
-      (err) => (errorMsg = "Wrong user"),
-    );
+      (err) => (errorMsg = err),
+    ).then(() => loading = false);
   };
   let onRegister = () => {
+    loading = true;
     auth.register(inputValue).then(
       (res) => (keypair = res),
       (err) => (errorMsg = err.message),
-    );
+    ).then(() => loading = false);
   };
 </script>
 
@@ -49,7 +52,7 @@
         <span class="">{errorMsg}</span>
       {/if}
       <button
-        class="btn btn-accent"
+        class={`btn btn-accent  ${loading && "loading"}`}
         on:click={type === "Login" ? onLogin : onRegister}>{type}</button
       >
       {#if type === "Login"}

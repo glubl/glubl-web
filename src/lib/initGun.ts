@@ -1,29 +1,30 @@
 import type { GunOptions } from "gun"
 
 import Gun from "gun/gun"
+import "gun/sea"
 import "gun/lib/radix"
 import "gun/lib/radisk"
 import "gun/lib/store"
 import "gun/lib/rindexed"
 
 const options : GunOptions = {
-    peers: ["http://localhost:8765/gun"],
-    file: 'db.json', 
+    peers: ["https://gun.dirtboll.com/gun"],
+    file: "global",
     localStorage: false,
     indexedDB: true,
     radisk: true, 
 }
 
 const optionsLocal : GunOptions = {
-    peers: ["http://localhost:8765/gun"],
+    peers: [],
+    file: "local",
     localStorage: true,
-    indexedDB: false,
-    radisk: false, 
+    indexedDB: true,
+    radisk: true, 
+    WebSocket: false,
+    ws: false,
+    RTCPeerConnection: false
 }
 
-const gun = Gun(options)
+export const gun = Gun(options)
 export const gunLocal = Gun(optionsLocal)
-
-export const gunRoot = gun._
-
-export default gun 
