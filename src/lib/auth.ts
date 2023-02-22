@@ -4,6 +4,7 @@ import SEA from "gun/sea"
 import type { Profile } from "./types"
 import type { ISEAPair } from "gun"
 import { InvalidPairError } from "./errors"
+import { goto } from "$app/navigation"
 
 const auth = {
     /**
@@ -56,8 +57,6 @@ const auth = {
 
     async logout() {
         localStorage.clear()
-        location.hash = ""
-        location.assign("/login")
         const user = gun.user()
         user.leave();
         (user._ as any).sea = undefined
@@ -87,8 +86,7 @@ export function protectedRedirect() {
         && pathname !== "/login" 
         && pathname !== "/register"
     ) {
-        location.hash = ""
-        location.assign("/login")
+        goto("/login")
     }
 }
 

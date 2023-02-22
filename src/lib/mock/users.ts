@@ -1,4 +1,12 @@
-export const userData: { [id: string]: User } = {
+export const userData: User = {
+  profilePicture: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?cs=srgb&dl=pexels-pixabay-220453.jpg",
+  name: "Andrew McEuler",
+  id: "andrewmc#2718",
+  pubKey: ((typeof window !== "undefined") && JSON.parse(localStorage.getItem("currentUser")!).pub) || "TsRMyecmURD8iqH9A_qDRYDOfQp7xQN68m8z3QstG48.zWVVasKlG9E2Kx2wf1UFyEiphnAnyw8EyQXNGaP1uBI",
+  lastMessageTs: 1672718281828
+}
+
+export const friendData: { [id: string]: User } = {
   "laracroft#4512": {
     profilePicture: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?cs=srgb&dl=pexels-pixabay-415829.jpg&fm=jpg&w=800&h=600",
     name: "Clara Loft",
@@ -22,30 +30,30 @@ export const userData: { [id: string]: User } = {
   }
 }
 
-export const userMessages: { [id: string]: { [ts: string]: Message } } = {
+export const friendMessages: { [id: string]: { [ts: string]: Message } } = {
   "laracroft#4512": {
     1675184520000: {
       "message": "It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. It was said that you would, destroy the Sith, not join them. ",
       "ts": 1675184520000,
-      "by": userData["laracroft#4512"]
+      "by": friendData["laracroft#4512"]
     },
     1675184521000: {
       "message": "It was you who would bring balance to the Force",
       "ts": 1675184521000,
-      "by": userData["laracroft#4512"]
+      "by": friendData["laracroft#4512"]
     },
     1675184525000: {
       "message": "Not leave it in Darkness",
       "ts": 1675184525000,
-      "by": userData["laracroft#4512"]
+      "by": friendData["laracroft#4512"]
     }
   }
 }
 
 for (let index = 0; index < 10; index++) {
-  for (const [k,v] of Object.entries(userMessages["laracroft#4512"]).slice(-3)) {
+  for (const [k,v] of Object.entries(friendMessages["laracroft#4512"]).slice(-3)) {
     let kk = parseInt(k)
-    userMessages["laracroft#4512"][`${kk+15000}`] = JSON.parse(JSON.stringify(v))
-    userMessages["laracroft#4512"][`${kk+15000}`].ts += 15000
+    friendMessages["laracroft#4512"][`${kk+15000}`] = JSON.parse(JSON.stringify(v))
+    friendMessages["laracroft#4512"][`${kk+15000}`].ts += 15000
   }
 }

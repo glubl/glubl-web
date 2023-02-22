@@ -1,7 +1,5 @@
 <script>
-  import { protectedRedirect } from "@src/lib/auth";
   import "../style.css";
-  protectedRedirect();
 </script>
 
 <div
