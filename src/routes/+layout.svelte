@@ -1,5 +1,19 @@
-<script>
+<script lang="ts">
+  import auth from "@src/lib/auth";
+  import { onMount } from "svelte";
   import "../style.css";
+  onMount(() => {
+    window.onunhandledrejection = async(e) => {
+			// if (""+e.reason === "Error: Not authenticated") {
+      //   e.preventDefault()
+      //   await auth.logout()
+      //   location.hash = ""
+      //   location.assign("/login")
+      //   return
+      // }
+		  console.log('we got exception, but the app has crashed', e);
+		}
+  })
 </script>
 
 <div

@@ -16,8 +16,8 @@
     <button
       class="btn btn-accent"
       on:click|stopPropagation={async () => {
-        goto("/chat")
-      }}>CHAT</button
+        goto("/app")
+      }}>APP</button
     >
   </div>
 {/if}

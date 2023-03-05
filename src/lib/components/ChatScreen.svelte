@@ -5,21 +5,109 @@
   import VirtualList from "@sveltejs/svelte-virtual-list";
   import { onMount } from "svelte";
   import * as dayjs from "dayjs";
-  import { friendData as FD, friendMessages } from "@src/lib/mock/users";
+  import { friendData as FRIEND_DATA, friendMessages as FRIEND_MESSAGES } from "@src/lib/mock/users";
+  import { chatStore, friendsStore, menuOpen } from "../stores";
+  import { getGun } from "../initGun";
+  import type { IGunChain, IGunInstance, IGunOnEvent } from "gun";
+  import auth from "../auth";
+  import { DecriptionFail, SharedCreationFail } from "../errors";
 
-  export let friend: string
+  const {gun, SEA, user, pair} = getGun()
 
+  function onMenuClick() {
+    menuOpen.update(v => !v)
+  }
+
+  let friends:  {[pub: string]: FriendProfile} = {}
+  friendsStore.subscribe(v => friends = v)
+
+  let friend: FriendProfile
+  chatStore.selectedFriend.subscribe(f => {
+    friend = friends[f]
+  })
+
+  let mySpace: IGunChain<any>
+  let theirSpace: IGunChain<any>
+  let mySpaceCert: string
+  let subEvent: IGunOnEvent
+  let chatData: {[k: string]: any}
+  let shared: string
+  $: chatData = {};
+  $: {
+    (async () => {
+      if (!!friend) {
+        const sharedKey = await SEA.secret(friend.epub, pair)
+        if (!sharedKey)
+          throw new SharedCreationFail()
+        shared = sharedKey
+
+        const mySpacePath = await auth.getUserSpacePath(pair.pub, sharedKey)
+        mySpace = gun.get("~"+friend.pub)
+          .get("spaces")
+          .get(mySpacePath)
+
+        const theirSpacePath = await auth.getUserSpacePath(friend.pub, sharedKey)
+        theirSpace = user
+          .get("spaces")
+          .get(theirSpacePath)
+
+        mySpaceCert = await SEA.decrypt(await mySpace.get("certificate").then(), sharedKey)
+
+        if (subEvent)
+          subEvent.off()
+
+        theirSpace.get("#messages").map().on(async (v, k, _, e) => {
+          subEvent = e
+          const soul = await SEA.decrypt(v, sharedKey)
+          if (!soul)
+            throw new DecriptionFail()
+          const dataEnc = await gun.get(soul).then()
+          if (!dataEnc)
+            console.warn("No message on soul")
+          const data = await SEA.decrypt(dataEnc as string, shared)
+          if (!data)
+            throw new DecriptionFail()
+          chatData[k] = data
+        })
+      }
+    })()
+  }
+
+  let messageInput: string
+  async function sendMessage() {
+    if (!messageInput) return
+    const time = new Date()
+    const msgData: ChatMessageGun = {
+      msg: messageInput,
+      ts: time.getTime(),
+      by: pair.pub
+    }
+    const msgDataSig = await SEA.encrypt(msgData, shared)
+    // const msgDataSig = await SEA.sign(msgDataEnc, pair)
+    user.get("messages").set({d: msgDataSig}).once(async (v, k) => {
+      const d = await SEA.encrypt(v._["#"], shared)
+      const hash = await SEA.work(d, null, null, {name: "SHA-256"})
+      const key = `${time.toISOString()}#${hash}`
+      
+      mySpace.get("#messages")
+        .get(key)
+        .put(d, undefined, {opt: {cert: mySpaceCert}})
+      theirSpace.get("#messages")
+        .get(key)
+        .put(d, undefined, {opt: {cert: mySpaceCert}})
+    })
+  }
+  
   let viewport: Element;
   let contents: Element;
-  let friendData = FD[friend]
-  $: friend, viewport, contents;
-  $: chatData = friendMessages[friend] || {};
+  $: viewport, contents;
+
   $: chats = [
     "dummy",
     "dummy",
     "dummy",
     ...Object.values(chatData)
-      .sort((a, b) => a.ts - b.ts)
+      // .sort((a, b) => a.ts - b.ts)
       .map((v: any, i) => {
         v.index = i + 3;
         return v;
@@ -99,29 +187,31 @@
 
   <div
     id="header"
-    class="prose flex flex-row items-center h-16 gap-x-4 w-[inherit] max-w-[inherit] py-4 px-4 backdrop-blur absolute shadow-lg top-0 bg-base-200/90"
+    class="prose flex flex-row items-center h-14 w-[inherit] max-w-[inherit] py-4 px-2 backdrop-blur absolute shadow-lg top-0 bg-base-200/90"
   >
-    <label
-      for="friend-list"
+    <div
       class="h-fit w-fit btn btn-outline btn-base btn-sm drawer-button lg:hidden p-2 !outline-none !border-none"
+      on:click={onMenuClick}
+      on:keypress
     >
       <Icon src={Bars3} theme="solid" class="color-gray-900 w-6 h-6" />
-    </label>
-    <strong class="text-lg">{friendData.name}</strong>
-    <div class="flex rounded-lg bg-base-300 h-fit translate-y-[1px]">
-      <code>{friend}</code>
     </div>
+    <h4 class="m-0 ml-2"><strong>{friend.username}</strong></h4>
+    <div class="w-2"></div>
+    <button on:click={() => navigator.clipboard.writeText(friend.pub)} class="flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5">
+      <code>{friend.pub.slice(0, 17)}...</code>
+    </button>
     <div class="flex-1" />
     <button
-      class="h-fit w-fit btn btn-base btn-accent btn-sm p-2 !outline-none !border-none"
+      class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
       on:click={() => {
-        console.log("Calling... ", friendData.id);
+        console.log("Calling... ", friend.pub);
       }}
     >
       <Icon
         src={Phone}
         theme="solid"
-        class="w-6 h-6 color-gray-900 object-contain aspect-square"
+        class="w-5 h-5 color-gray-900"
       />
     </button>
   </div>
@@ -132,14 +222,17 @@
       type="text"
       placeholder="Message"
       class="flex-1 input input-bordered rounded-tr-none rounded-br-none"
+      bind:value={messageInput}
     />
-    <div class="btn btn-accent p-3">
+    <button class="btn btn-accent p-3"
+      on:click|preventDefault={sendMessage}
+    >
       <Icon
         src={PaperAirplane}
         theme="solid"
         class="color-gray-900 object-contain aspect-square"
       />
-    </div>
+    </button>
   </div>
 </div>
 
