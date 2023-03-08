@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { goto, invalidateAll } from "$app/navigation";
-  import { friendData, userData } from "@src/lib/mock/users";
+  import { goto } from "$app/navigation";
   import {
     UserGroup,
     GlobeAlt,
@@ -104,7 +103,7 @@
     {/if}
   </div>
   <div class="drawer-side">
-    <label for="friend-list" class="drawer-overlay" />
+    <label for="friend-list" class="drawer-overlay" on:click|preventDefault={onMenuClick} on:keypress={onMenuClick} />
     <div class="flex flex-row bg-base-300 text-base-content shadow-lg w-fit">
       <div class="flex flex-col w-14 bg-base-300 h-full">
         {#if menuOpen}

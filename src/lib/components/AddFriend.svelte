@@ -2,61 +2,36 @@
   import { Bars3, Check } from "@steeze-ui/heroicons";
   import { Icon } from "@steeze-ui/svelte-icon";
   import dayjs from "dayjs";
-  import type { IGunOnEvent } from "gun";
-  import { onDestroy, onMount } from "svelte";
-  import { get, writable, type Writable } from "svelte/store";
-  import { DecriptionFail } from "../errors";
+  import { onMount } from "svelte";
+  import { writable } from "svelte/store";
   import { addFriend, parseFriendRequest, sendFriendRequest } from "../friends";
   import { getGun } from "../initGun";
-  import { friendsStore, gunStore, menuOpen } from "../stores";
+  import { friendsStore, menuOpen } from "../stores";
+
+  function onMenuClick() {
+    menuOpen.update(v => !v)
+  }
 
   const {gun, user, pair} = getGun()
 
   let friendsPub = new Set<string>()
-  friendsStore.subscribe(v => {
-    friendsPub = new Set<string>(Object.values(v||{}).map(vv => vv.pub))
-  })
-
+  let incomingMap: {[pub: string]: Profile} = {}
   let incoming: Profile[]
-  $: incoming = []
+  $: incoming = Object.values(incomingMap||{}).filter(v => !friendsPub.has(v.pub))
 
-  let incomingStore = writable<{[pub: string]: Profile}>()
-  incomingStore.subscribe(v => incoming = Object.values(v||{}))
-
-  let gunReqEv: IGunOnEvent
   onMount(async () => {
+    friendsStore.subscribe(v => {
+      friendsPub = new Set<string>(Object.values(v||{}).map(vv => vv.pub))
+    })
     gun.get("#fren-req")
       .get({".": {"*": `${pair.pub}|${dayjs().format("YYYY-MM-DD")}`}})
       .map()
-      .on(async (v, k, _, e) => {
+      .once(async (v, k) => {
         let req = await parseFriendRequest(v)
         if (friendsPub.has(req.pub)) return
-        incomingStore.update((val) => {
-          return {...(val||{}), [req.pub]: req}
-        })
-        gunReqEv = e
+        incomingMap[req.pub] = req
       })
   })
-
-  onDestroy(() => {
-    if (gunReqEv) {
-      gunReqEv.off()
-    }
-  })
-  
-  // user.get("friend-requests")
-  //   .map()
-  //   .once(async (v, k) => {
-  //     if (v) {
-  //       let reqEnc = await gun.get(v["#"]).get(v["."]).then()
-  //       // console.log(await decryptRequest(JSON.parse(atob(reqEnc))))
-  //       outgoing.update((val) => {
-  //         let newV = {...val}
-  //         newV[k] = v
-  //         return newV
-  //       })
-  //     } 
-  //   })
 
   let pubInput: string
   $: pubLoading = false
@@ -65,10 +40,6 @@
   $: requestMenuSelected = "incoming"
 
   $: errorMsg = ""
-  // $: {
-  //   let gg = 
-    
-  // }
 
   function parsePub(t: string) {
     try {
@@ -98,7 +69,7 @@
   >
     <div
       class="h-fit w-fit btn btn-outline btn-base btn-sm drawer-button lg:hidden p-2 !outline-none !border-none"
-      on:click={() => menuOpen.update(v => !v)}
+      on:click={onMenuClick}
       on:keypress
     >
       <Icon src={Bars3} theme="solid" class="color-gray-900 w-6 h-6" />

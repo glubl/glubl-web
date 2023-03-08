@@ -1,17 +1,19 @@
 <script lang="ts">
-  import { chatStore, friendsStore } from "$lib/stores"
+  import { screenStore, friendsStore } from "$lib/stores"
   import { Icon } from "@steeze-ui/svelte-icon";
   import { User, UserPlus } from "@steeze-ui/heroicons";
+  import { onMount } from "svelte";
   
-  let friends: FriendProfile[]
-  $: friends = []
-  friendsStore.subscribe(v => friends = Object.values(v))
-  $: console.log(friends)
-  $: selectedMenu = (friends[0]||{}).pub || ":addFriend";
-  $: {
-    chatStore.selectedFriend.set(selectedMenu)
-    chatStore.selectedAddFriend.set(selectedMenu === ":addFriend")
-  }
+  let friends: {[pub: string]: FriendProfile}
+  $: friends = {}
+  onMount(() => {   
+    friendsStore.subscribe(v => {
+      friends = v
+    })
+  })
+  let selectedMenu: string
+  $: selectedMenu = selectedMenu || (friends[0]||{}).pub || ":addFriend:";
+  $: screenStore.selectedChatMenu.set(selectedMenu)
 </script>
 
 <div class="w-full h-full flex flex-col prose">
@@ -22,13 +24,12 @@
   </h4>
   <button
     class={`text-sm !rounded-md my-1 h-8 mx-2 px-2 gap-x-2 transition-colors duration-200 flex flex-row items-center active:bg-base-content/20 no-underline ${
-      !selectedMenu || selectedMenu === ":addFriend"
+      !selectedMenu || selectedMenu === ":addFriend:"
         ? "active bg-base-100"
         : "hover:bg-base-100 bg-base-200"
     }`}
     on:click|preventDefault={() => {
-      selectedMenu = ":addFriend"
-      chatStore.selectedAddFriend.set(true)
+      selectedMenu = ":addFriend:"
     }}
   >
     <Icon src={UserPlus} theme="solid" class="color-gray-900 w-5 h-5" />
@@ -39,10 +40,9 @@
       id={pubKey}
       on:click|preventDefault={() => {
         selectedMenu = pubKey;
-        chatStore.selectedAddFriend.set(false)
       }}
       data-friend-id={pubKey}
-      class={`!rounded-md my-1 py-6 h-10 mx-2 px-2 gap-x-2 transition-colors duration-200 flex flex-row items-center active:bg-base-content/20 no-underline  ${
+      class={`min-w-0 !rounded-md my-1 py-6 h-10 mx-2 px-2 gap-x-2 transition-colors duration-200 flex flex-row items-center active:bg-base-content/20 no-underline  ${
         pubKey == selectedMenu
           ? "active bg-base-100"
           : "hover:bg-base-100 bg-base-300"
@@ -57,9 +57,9 @@
           {/if}
         </div>
       </div>
-      <p class="text-md font-normal m-0 flex pb-0.5">
-        {friend.username}
-      </p>
+      <div class="truncate w-full text-md font-normal pb-0.5">
+        {friend.username||friend.pub}
+      </div>
     </button>
   {/each}
 </div>

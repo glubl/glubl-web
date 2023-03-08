@@ -4,61 +4,128 @@ import { getGun } from "./initGun";
 import auth from "./auth";
 import type { IGunOnEvent } from "gun";
 import { friendsStore } from "./stores";
+import  _ from "lodash";
+import { writable, get } from "svelte/store";
+import { debounceByParam } from "./utils";
 
-let friendEv: {[k: string]: IGunOnEvent} = {}
+if (typeof window !== "undefined")
+  window._ = _
+
+let friendEv: IGunOnEvent
+let friendsEv: {[k: string]: IGunOnEvent} = {}
+// TODO: make global and limit memory
+let friendDataCache = writable<{[v: string]: FriendProfile}>({})
+let initatedFriends = new Set<string>()
+
+function equals(f1: FriendProfile, f2: FriendProfile) {
+  return (
+    f1.epub     === f2.epub    &&
+    f1.pub      === f2.pub     &&
+    f1.picture  === f2.picture &&
+    f1.space    === f2.space   &&
+    f1.username === f2.username
+  )
+}
+
+function updateFrendData(friendData: FriendProfile) {
+  if (!equals(friendData, get(friendsStore)[friendData.pub]||{})) {
+    friendsStore.update(v => {
+      v[friendData.pub] = {
+        ...(v[friendData.pub]||{}),
+        ...friendData
+      }
+      return v
+    })
+  }
+}
+
+const getDataCache = async(d: string, key: string) => {
+  let friendProfile = get(friendDataCache)[d]
+  if (friendProfile)
+    return friendProfile
+
+  const {SEA} = getGun()
+
+  friendProfile = await SEA.decrypt(d, key) as FriendProfile
+  if (!friendProfile)
+    throw new DecriptionFail()
+    
+  friendDataCache.update(v => {
+    v[d] = friendProfile
+    return v
+  })
+
+  return friendProfile 
+}
+
+const initiateFriendData = debounceByParam(async(d: string) => {
+  const {gun, SEA, pair} = getGun()
+
+  let friendData = await getDataCache(d, pair.epriv)
+  let storedData = get(friendsStore)[friendData.pub] || {}
+  friendData = {
+    ...storedData,
+    ...friendData
+  }
+
+  if (initatedFriends.has(friendData.pub)) return
+  initatedFriends.add(friendData.pub)
+
+  const shared = await SEA.secret(friendData.epub, pair)
+  if (!shared)
+    throw new SharedCreationFail()
+
+  const mySpacePath = await auth.getUserSpacePath(pair.pub, shared)
+
+  if (friendsEv[friendData.pub])
+    friendsEv[friendData.pub].off()
+
+  const friendDataEnc = await gun.get("~"+friendData.pub).get("spaces")
+    .get(mySpacePath)
+    .get("profile")
+    .on(async (v, _, __, e) => {
+      console.log(v)
+      if (v) {
+        friendsEv[friendData.pub] = e
+        friendData = await getDataCache(v, shared)
+        let storedData = get(friendsStore)[friendData.pub] || {}
+        friendData = {
+          ...storedData,
+          ...friendData
+        }
+      }
+      updateFrendData(friendData)
+    })
+    .then()
+
+  // Friend request not yet accepted
+  if (!friendDataEnc) {
+    updateFrendData(friendData)
+  }
+  
+}, (a) => a, 1000, {'leading': true, 'trailing': false})
+
 
 export const init = async () => {
-  const {gun, SEA, user, pair} = getGun()
+  const {user, pair} = getGun()
+  const mySpacePath = await auth.getUserSpacePath(pair.pub, pair.epriv)
   user.get("friends")
-    .map()
-    .on(async (v, k, _, __) => {
-      const friend = await SEA.decrypt(v, pair) as FriendProfile
-      if (!friend)
-        throw new DecriptionFail()
-      friendsStore.update(v => {
-        v = v || {}
-        const fren = v[friend.pub] || friend
-        v[friend.pub] = {
-          ...fren, 
-          pub: friend.pub, 
-          epub: friend.epub, 
-          space: friend.space
-        }
-        return v
-      })
-      
-      const shared = await SEA.secret(friend.epub, pair)
-      if (!shared)
-        throw new SharedCreationFail()
-      const mySpacePath = await auth.getUserSpacePath(pair.pub, shared)
-      
-      if (friendEv[k])
-        friendEv[k].off()
-
-      gun.get("~"+friend.pub).get("spaces")
-        .get(mySpacePath)
-        .get("profile")
-        .on(async (vv, _, __, ee) => {
-          friendEv[k] = ee
-          const friendProfile = await SEA.decrypt(vv, shared) as FriendProfile
-          friendsStore.update(v => {
-            v = v || {}
-            const fren = v[friend.pub] || friendProfile
-            v[friend.pub] = {
-              ...fren,
-              ...friendProfile, 
-              pub: fren.pub, 
-              epub: fren.epub, 
-              space: fren.space
-            }
-            return v
-          })
-        })
+    .on((v, _, __, e) => {
+      console.log("friends-init-ev", v)
+      if (!v) return
+      friendEv = e
+      delete v._
+      Object.entries<string>(v)
+        .filter(([k, _]) => k != mySpacePath)
+        .map(([_, v]) => initiateFriendData(v))
     })
 }
 
 export const deinit = () => {
-  Object.values(friendEv).map(v => v.off())
+  if (friendEv) friendEv.off()
+  Object.values(friendsEv).map(v => v.off())
+  friendDataCache.set({})
+  friendsStore.set({})
 }
 
 export const sendFriendRequest = async (pairPub: {pub: string, epub: string}) => {
