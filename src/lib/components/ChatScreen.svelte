@@ -16,6 +16,7 @@
     menuOpen.update(v => true)
   }
 
+
   export let friend: FriendProfile
   
   const {gun, SEA, user, pair} = getGun()
@@ -26,11 +27,15 @@
   let theirSpacePath: string
   let theirSpace: IGunChain<any>
   let mySpaceCert: string
-  let subEvent: {e?: IGunOnEvent} = {}
+  let myE: IGunOnEvent | null
+  let theirE: IGunOnEvent | null
   let chatData: {[k: string]: ChatMessage} = {}
   let profilePathMap: {[k: string]: FriendProfile} = {}
   $: profilePathMap[theirSpacePath] = friend
-  onMount(async () => {
+
+  async function init(friend: FriendProfile) {
+    console.log(friend)
+
     if (!friend.pub)
       throw new Error("Friend profile somehow doesn't have public key??")
     if (!pair.pub)
@@ -58,28 +63,42 @@
       
     mySpaceCert = await SEA.decrypt(await mySpace.get("certificate").then(), shared)
     
-    if (subEvent.e)
-      subEvent.e.off()
+    clearE()
+    chatData = {}
 
     theirSpace
       .get("#messages")
       .map()
-      .on(receiveMessage)
+      .on((v, k, _, e) => {
+        receiveMessage(v, k)
+        theirE = e
+      })
 
     mySpace
       .get("#messages")
       .map()
-      .on(receiveMessage)
-
-    console.log(mySpacePath)
-  })
+      .on((v, k, _, e) => {
+        receiveMessage(v, k)
+        myE = e
+      })
+  }
+  function clearE() {
+    if (myE) {
+      myE.off()
+      myE = null
+    }
+    if (theirE) {
+      theirE.off()
+      theirE = null
+    }
+  }
+  $: friend && init(friend)
 
   onDestroy(() => {
-    if (subEvent.e) subEvent.e.off()
+    clearE()
   })
 
-  async function receiveMessage(v: string, k: string, _: GunHookMessagePut, e: IGunOnEvent) {
-    subEvent.e = e
+  async function receiveMessage(v: string, k: string) {
     const path = k.substring(k.indexOf("|")+1, k.indexOf("#"))
     const profile = profilePathMap[path]
     if (!profile) {
