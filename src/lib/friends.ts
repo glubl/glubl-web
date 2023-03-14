@@ -1,8 +1,8 @@
 import { DecriptionFail, EncryptionFail, HashFail, SharedCreationFail, VerifyFail } from "./errors"
 import dayjs from "dayjs";
-import { getGun } from "./initGun";
+import { getGun } from "./gun";
 import auth from "./auth";
-import type { IGunOnEvent } from "gun";
+import type { IGunOnEvent, ISEAPair } from "gun";
 import { friendsStore } from "./stores";
 import  _ from "lodash";
 import { writable, get } from "svelte/store";
@@ -84,7 +84,7 @@ const initiateFriendData = debounceByParam(async(d: string) => {
     .get(mySpacePath)
     .get("profile")
     .on(async (v, _, __, e) => {
-      console.log(v)
+      // console.log(v)
       if (v) {
         friendsEv[friendData.pub] = e
         friendData = await getDataCache(v, shared)
@@ -107,11 +107,11 @@ const initiateFriendData = debounceByParam(async(d: string) => {
 
 
 export const init = async () => {
-  const {user, pair} = getGun()
+  const { gun, user, pair} = getGun()
   const mySpacePath = await auth.getUserSpacePath(pair.pub, pair.epriv)
   user.get("friends")
     .on((v, _, __, e) => {
-      console.log("friends-init-ev", v)
+      // console.log("friends-init-ev", v)
       if (!v) return
       friendEv = e
       delete v._

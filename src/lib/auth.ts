@@ -1,15 +1,22 @@
 import type { Profile } from "./types"
-import type { ISEA, ISEAPair } from "gun"
+import type { GunSchema, IGunChain, IGunInstanceRoot, ISEA, ISEAPair } from "gun"
 import { DecriptionFail, HashFail, InvalidPairError, ProfileNotSet } from "./errors"
 import { goto } from "$app/navigation"
 import { clear, gunStore } from "./stores"
 import { get } from "svelte/store"
-import { getGun } from "./initGun"
+import { getGun } from "./gun"
 import { SEA } from "gun"
 
 import * as stores from "./stores"
-import * as db from "./initGun"
+import * as db from "./gun"
 import * as friends from "./friends"
+
+import { uniqueNamesGenerator, adjectives, colors, animals, type Config } from 'unique-names-generator';
+const randNameConfig: Config = {
+  dictionaries: [adjectives, colors, animals],
+  separator: ' ',
+};
+
 
 const auth = {
   /**
@@ -19,11 +26,12 @@ const auth = {
    */
   async login(stringKeyPair: string) {
     try {
-      let gun = get(gunStore)
+      // console.log(stringKeyPair)
+      const { user } = getGun()
       const keyPair = JSON.parse(stringKeyPair)
       await this.verifyPair(keyPair)
       let authResp: any;
-      const res = gun.user().auth(keyPair, (o) => authResp = o)
+      const res = user.auth(keyPair, (o) => authResp = o)
       if (authResp.err || res.ing) {
           throw new InvalidPairError()
       }
@@ -36,12 +44,11 @@ const auth = {
       window.localStorage.setItem('currentUser', JSON.stringify(gunUser).replace(/\%22/g,'"'))
       window.localStorage.setItem('loggedIn', `${isUser}`)
        
-      gunStore.set(gun)
-      const {pair} = getGun()
+      // gunStore.set(gun)
       const myProfile = await this.getProfile()
       stores.profileStore.set({
         ...myProfile,
-        space: await this.getUserSpacePath(pair.pub, pair.epriv)
+        space: await this.getUserSpacePath(keyPair.pub, keyPair.epriv)
       })
 
       await friends.init()
@@ -60,8 +67,7 @@ const auth = {
    * @returns {string}
    */
   async register(username: string) {
-    let gun = get(gunStore)
-    let SEA: ISEA = window.SEA
+    const { gun, SEA } = getGun()
     const pair : ISEAPair = await SEA.pair()
     const stringPair : string = JSON.stringify(pair).replace(/\%22/g,'"')
     await this.login(stringPair)
@@ -90,18 +96,16 @@ const auth = {
       .put({messages: null})
       .put({profile: userProfileEnc})
 
-    gunStore.set(gun)
     return stringPair
   },
 
   async logout() {
 
     // Buggy
-    const gun = get(gunStore)
+    const { gun } = getGun()
     const user = gun.user()
     user.leave();
     (user._ as any).sea = undefined
-    gunStore.set(gun)
 
     localStorage.clear()
     friends.deinit()
@@ -139,7 +143,7 @@ const auth = {
     if (!profile) {
       console.warn("Profile not set, creating a new one...")
       profile = this.createDefaultProfile()
-      user.get("profile").put(await SEA.encrypt(profile, pair))
+      // user.get("profile").put(await SEA.encrypt(profile, pair))
     }
     return profile
   },
@@ -150,7 +154,7 @@ const auth = {
       pub: pair.pub, 
       epub: pair.epub, 
       picture: "",
-      username: String.random(8)
+      username: uniqueNamesGenerator({...randNameConfig, seed: pair.pub}).toTitleCase()
     } as Profile
   },
 
@@ -165,21 +169,43 @@ const auth = {
     return pathHash2
   },
 
+  // TODO: Use shared pair instead
   async setupSharedSpace(theirPub: string, sharedKey: string) {
     const {SEA, user, pair} = getGun()
   
     const profile = await auth.getProfile()
     const sharedPath = await auth.getUserSpacePath(theirPub, sharedKey)
-    const certificate = await SEA.certify([theirPub], [{"*": "notifications"}, {"*": "messages"}], pair, undefined)
     user.get("spaces")
       .get(sharedPath)
       .put({
-        profile: await SEA.encrypt(profile, sharedKey),
-        certificate: await SEA.encrypt(certificate, sharedKey),
-        "#notifications": null,
-        "#messages": null
+        profile: await SEA.encrypt(profile, sharedKey), // My profile
+        status: await SEA.encrypt({ 
+          message: "", // My status message
+          ts: 0 // My last status timestamp (also for online status)
+        }, sharedKey),
+        messageStatus: await SEA.encrypt({
+          readTs: 0, // My last timestamp read message
+          unread: 0, // My unread count
+          scanTs: 0, // My last timestamp scan messsage
+        }, sharedKey),
+        
+        // `${ts ISO}|${space path}#${hash}`
+        notifications: null, // My notification to them
+        messages: null, // My messages to them
       })
     return sharedPath
+  },
+
+  async putData(data: string | number): Promise<any> {
+    const { gun, SEA, user } = getGun()
+    const uuidFn = (gun as any).back("opt.uuid") as (l?: number) => string
+    const hash = await SEA.work(data, null, null, {name: "SHA-256"})
+    if (!hash)
+    throw new HashFail()
+    const uuid = uuidFn()
+    const frozen = user.get("#"+uuid)
+    frozen.get(hash).put(data)
+    return frozen as any
   }
 }
 

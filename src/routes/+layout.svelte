@@ -1,7 +1,7 @@
 <script lang="ts">
   import auth, { canAuthenticate } from "@src/lib/auth";
   import { onMount } from "svelte";
-  import * as db from "@src/lib/initGun";
+  import * as db from "@src/lib/gun";
   import * as friends from "@src/lib/friends";
   import "../style.css";
   import { goto, invalidate } from "$app/navigation";

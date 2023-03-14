@@ -58,24 +58,17 @@ export async function init() {
     console.log(`Using ${localStorage.driver()} for local storage`)
   })
   
-  gunStore.subscribe((g) => {
-    if (!g) return
-    let user = g.user()
-    let pair = (user._ as any).sea
-    gunApp = {
-      gun: g,
-      SEA: SEA,
-      user: user,
-      pair: pair
-    }
-  })
-  window.gun = Gun(options)
-  gunStore.set(window.gun)
-  localGunStore.set(Gun(optionsLocal))
+  const gun = Gun(options)
+  window.gun = gun
+  gunStore.set(gun)
+
+  const localGun = Gun(optionsLocal)
+  localGunStore.set(localGun)
 }
 
 export function getGun() {
-  if (!gunApp.pair)
-    throw new NotAuthenticated()
-  return gunApp
+  const gun = get(gunStore)
+  const user = gun.user()
+  const pair = (user._ as any).sea as ISEAPair
+  return { gun, SEA, user, pair }
 }

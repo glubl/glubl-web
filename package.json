@@ -43,6 +43,7 @@
 		"localforage": "^1.10.0",
 		"lodash": "^4.17.21",
 		"svrollbar": "^0.12.0",
-		"tailwind-merge": "^1.8.1"
+		"tailwind-merge": "^1.8.1",
+		"unique-names-generator": "^4.7.1"
 	}
 }

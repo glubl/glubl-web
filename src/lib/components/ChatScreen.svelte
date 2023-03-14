@@ -6,35 +6,46 @@
   import { onMount, onDestroy } from "svelte";
   import * as dayjs from "dayjs";
   import { screenStore, friendsStore, menuOpen, profileStore } from "../stores";
-  import { getGun } from "../initGun";
+  import { getGun } from "../gun";
   import type { GunHookMessagePut, IGunChain, IGunInstance, IGunOnEvent } from "gun";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
   import auth from "../auth";
   import { get } from "svelte/store";
+  import * as _ from "lodash";
 
   function onMenuClick() {
     menuOpen.update(v => true)
   }
 
-
   export let friend: FriendProfile
   
   const {gun, SEA, user, pair} = getGun()
+  const uuidFn: (l?: number) => string = (gun as any).back("opt.uuid") 
 
   let shared: string
   let mySpacePath: string
   let mySpace: IGunChain<any>
   let theirSpacePath: string
   let theirSpace: IGunChain<any>
-  let mySpaceCert: string
   let myE: IGunOnEvent | null
   let theirE: IGunOnEvent | null
+  let chats: (ChatMessage & {index: number})[]
   let chatData: {[k: string]: ChatMessage} = {}
+  const refreshChat = _.debounce(() => {
+    chats = [
+      ...Object.values(chatData)
+        .sort((a, b) => b.ts - a.ts)
+        .map((v: any, i) => {
+          v.index = i;
+          return v;
+        }),
+    ];
+  }, 100, {maxWait: 500})
+
   let profilePathMap: {[k: string]: FriendProfile} = {}
   $: profilePathMap[theirSpacePath] = friend
 
   async function init(friend: FriendProfile) {
-    console.log(friend)
 
     if (!friend.pub)
       throw new Error("Friend profile somehow doesn't have public key??")
@@ -61,13 +72,10 @@
       .get("spaces")
       .get(theirSpacePath)
       
-    mySpaceCert = await SEA.decrypt(await mySpace.get("certificate").then(), shared)
-    
-    clearE()
-    chatData = {}
+    clear()
 
     theirSpace
-      .get("#messages")
+      .get("messages")
       .map()
       .on((v, k, _, e) => {
         receiveMessage(v, k)
@@ -75,14 +83,14 @@
       })
 
     mySpace
-      .get("#messages")
+      .get("messages")
       .map()
       .on((v, k, _, e) => {
         receiveMessage(v, k)
         myE = e
       })
   }
-  function clearE() {
+  function clear() {
     if (myE) {
       myE.off()
       myE = null
@@ -91,34 +99,45 @@
       theirE.off()
       theirE = null
     }
+    chats = []
+    chatData = {}
   }
   $: friend && init(friend)
 
   onDestroy(() => {
-    clearE()
+    clear()
   })
 
-  async function receiveMessage(v: string, k: string) {
-    const path = k.substring(k.indexOf("|")+1, k.indexOf("#"))
+  async function receiveMessage(v: {[k: string]: string}, k: string) {
+    delete v._
+    const [key, msg] = Object.entries(v)
+      .filter(([k, _]) => k.startsWith("d|"))
+      [0]
+    const path = key.substring(key.indexOf("|")+1, key.indexOf("#"))
     const profile = profilePathMap[path]
     if (!profile) {
       throw new Error("Unknown chat sender")
     }
-    const enc = await SEA.verify(v, profile.pub)
+    const enc = await SEA.verify(msg, profile.pub)
     if (!enc)
       throw new VerifyFail()
-    const soul = await SEA.decrypt(enc, shared)
-    if (!soul)
-      throw new DecriptionFail()
-    let dataEnc: {d: string} = (await gun.get(soul).then()) as any
-    if (!dataEnc || !dataEnc.d) 
-      throw new Error("No message on soul")
-    const data = await SEA.decrypt(dataEnc.d, shared)
-    data.by = profile
+    const data = await SEA.decrypt(enc, shared)
     if (!data)
       throw new DecriptionFail()
+    
+    data.by = get(profileStore)
+    data.to = profile
+
+    // const path = k.substring(k.indexOf("|")+1, k.indexOf("#"))
+    // let dataEnc: {d: string} = (await gun.get(soul).then()) as any
+    // if (!dataEnc || !dataEnc.d) 
+    //   throw new Error("No message on soul")
+    // const data = await SEA.decrypt(dataEnc.d, shared)
+    // data.by = profile
+    // if (!data)
+    //   throw new DecriptionFail()
     chatData[k] = data
-    chatData = chatData
+    refreshChat()
   }
 
   let messageInput: string
@@ -128,50 +147,25 @@
     const msgData: ChatMessageGun = {
       msg: messageInput,
       ts: time.getTime(),
-      by: pair.pub
+      by: pair.pub,
+      to: friend.pub
     }
     const msgDataEnc = await SEA.encrypt(msgData, shared)
-    user.get("messages").set({d: msgDataEnc}).once(async (v, k) => {
-      const dEnc = await SEA.encrypt(v._["#"], shared)
-      const dSig = await SEA.sign(dEnc, pair)
-      const hash = await SEA.work(dSig, null, null, {name: "SHA-256"})
-      const key = `${time.toISOString()}|${mySpacePath}#${hash}`
-      
-      console.log(mySpaceCert)
+    const msgDataSig = await SEA.sign(msgDataEnc, pair)
+    const hash = await SEA.work(msgDataSig, null, null, {name: "SHA-256"})
+    const uuid = uuidFn()
+    const node = user.get("#"+uuid).put({[`d|${mySpacePath}#${hash}`]: msgDataSig})
+    theirSpace.get("messages")
+      .get(time.toISOString())
+      .put(node)
 
-      mySpace.get("#messages")
-        .get(key)
-        .put(dSig, undefined, {opt: {cert: mySpaceCert}})
-      theirSpace.get("#messages")
-        .get(key)
-        .put(dSig, undefined, {opt: {cert: mySpaceCert}})
-
-      messageInput = ""
-    })
+    messageInput = ""
   }
   
   let viewport: Element;
   let contents: Element;
   $: viewport, contents;
 
-  let chats: (ChatMessage & {index: number})[]
-  $: chats = [
-    ...Object.values(chatData)
-      .sort((a, b) => b.ts - a.ts)
-      .map((v: any, i) => {
-        v.index = i;
-        return v;
-      }),
-  ];
-
-  // onMount(() => {
-  //   viewport = document.querySelector(
-  //     "#chat-screen svelte-virtual-list-viewport",
-  //   )!;
-  //   contents = document.querySelector(
-  //     "#chat-screen svelte-virtual-list-contents",
-  //   )!;
-  // });
 </script>
 
 <div
@@ -183,7 +177,7 @@
   <!-- <VirtualList items={chats} let:item={chat}> -->
   <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-16 pb-2">
     <div bind:this={contents} id="contents" class="flex h-fit flex-col-reverse">
-      {#each chats as chat}
+      {#each chats??[] as chat}
          <!-- content here -->
         {#if 
           chat.index != chats.length-1

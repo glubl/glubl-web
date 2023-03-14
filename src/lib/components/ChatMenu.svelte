@@ -57,7 +57,7 @@
           {/if}
         </div>
       </div>
-      <div class="truncate w-full text-md font-normal pb-0.5">
+      <div class="truncate w-full text-md font-normal pb-0.5 text-left ml-2">
         {friend.username||friend.pub}
       </div>
     </button>
