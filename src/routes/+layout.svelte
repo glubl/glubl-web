@@ -11,6 +11,7 @@
   $: loaded = false
 
   urlStore.subscribe(u => {
+    if (!u) return
     if (!canAuthenticate() && 
       !(u.pathname.startsWith("/login") || u.pathname.startsWith("/register")))
       goto("/login")

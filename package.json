@@ -36,6 +36,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@sveltejs/adapter-static": "^2.0.1",
 		"@sveltejs/svelte-virtual-list": "^3.0.1",
 		"@types/gun": "^0.9.3",
 		"dayjs": "^1.11.7",
