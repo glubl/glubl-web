@@ -110,32 +110,21 @@
 
   async function receiveMessage(v: {[k: string]: string}, k: string) {
     delete v._
-    const [key, msg] = Object.entries(v)
-      .filter(([k, _]) => k.startsWith("d|"))
-      [0]
-    const path = key.substring(key.indexOf("|")+1, key.indexOf("#"))
+    const path = k.substring(k.indexOf("|")+1)
     const profile = profilePathMap[path]
     if (!profile) {
       throw new Error("Unknown chat sender")
     }
-    const enc = await SEA.verify(msg, profile.pub)
+    const enc = await SEA.verify(v.d, profile.pub)
     if (!enc)
       throw new VerifyFail()
     const data = await SEA.decrypt(enc, shared)
     if (!data)
       throw new DecriptionFail()
     
-    data.by = get(profileStore)
-    data.to = profile
+    data.by = profile
+    data.to = get(profileStore)
 
-    // const path = k.substring(k.indexOf("|")+1, k.indexOf("#"))
-    // let dataEnc: {d: string} = (await gun.get(soul).then()) as any
-    // if (!dataEnc || !dataEnc.d) 
-    //   throw new Error("No message on soul")
-    // const data = await SEA.decrypt(dataEnc.d, shared)
-    // data.by = profile
-    // if (!data)
-    //   throw new DecriptionFail()
     chatData[k] = data
     refreshChat()
   }
@@ -152,12 +141,9 @@
     }
     const msgDataEnc = await SEA.encrypt(msgData, shared)
     const msgDataSig = await SEA.sign(msgDataEnc, pair)
-    const hash = await SEA.work(msgDataSig, null, null, {name: "SHA-256"})
-    const uuid = uuidFn()
-    const node = user.get("#"+uuid).put({[`d|${mySpacePath}#${hash}`]: msgDataSig})
     theirSpace.get("messages")
-      .get(time.toISOString())
-      .put(node)
+      .get(`${time.toISOString()}|${mySpacePath}`)
+      .put({d: msgDataSig})
 
     messageInput = ""
   }
