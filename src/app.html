@@ -9,4 +9,11 @@
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
+  <script>
+    Object.defineProperty(String.prototype, 'toTitleCase', {
+      value() {
+        return this.replace(/(^\w|\s\w)(\S*)/g, (_,m1,m2) => m1.toUpperCase()+m2.toLowerCase())
+      }
+    })
+  </script>
 </html>

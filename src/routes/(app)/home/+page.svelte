@@ -1,4 +1,5 @@
 <script>
+  import { goto } from "$app/navigation";
   import auth from "@lib/auth";
 </script>
 
@@ -7,9 +8,16 @@
     <h1>Welcome to Glubl!</h1>
     <button
       class="btn btn-accent"
-      on:click|stopPropagation={() => {
-        auth.logout();
+      on:click|stopPropagation={async () => {
+        await auth.logout();
+        goto("/login")
       }}>LOGOUT</button
+    >
+    <button
+      class="btn btn-accent"
+      on:click|stopPropagation={async () => {
+        goto("/app")
+      }}>APP</button
     >
   </div>
 {/if}
