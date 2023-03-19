@@ -2,11 +2,12 @@
   import { Bars3, Check } from "@steeze-ui/heroicons";
   import { Icon } from "@steeze-ui/svelte-icon";
   import dayjs from "dayjs";
+  import { get } from "lodash";
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
   import { addFriend, parseFriendRequest, sendFriendRequest } from "../friends";
-  import { getGun } from "../initGun";
-  import { friendsStore, menuOpen } from "../stores";
+  import { getGun } from "../gun";
+  import { friendsStore, menuOpen, profileStore } from "../stores";
 
   function onMenuClick() {
     menuOpen.update(v => !v)
@@ -20,6 +21,9 @@
   $: incoming = Object.values(incomingMap||{}).filter(v => !friendsPub.has(v.pub))
 
   onMount(async () => {
+    if (!pair)
+      return
+
     friendsStore.subscribe(v => {
       friendsPub = new Set<string>(Object.values(v||{}).map(vv => vv.pub))
     })
@@ -27,6 +31,7 @@
       .get({".": {"*": `${pair.pub}|${dayjs().format("YYYY-MM-DD")}`}})
       .map()
       .once(async (v, k) => {
+        // console.log(k, v)
         let req = await parseFriendRequest(v)
         if (friendsPub.has(req.pub)) return
         incomingMap[req.pub] = req

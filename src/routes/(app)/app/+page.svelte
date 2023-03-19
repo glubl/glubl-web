@@ -22,11 +22,11 @@
   import auth from "@src/lib/auth";
 
   function onMenuClick() {
-    menuOpen.update(v => !v)
+    menuOpen.update((v) => !v);
   }
 
-  let isMenuOpen: boolean
-  menuOpen.subscribe(v => isMenuOpen = v)
+  let isMenuOpen: boolean;
+  menuOpen.subscribe((v) => (isMenuOpen = v));
 
   export let menuSelected: ["top" | "bottom", number] = ["top", 0];
 
@@ -97,13 +97,16 @@
   />
   <div class="drawer-content flex flex-col items-center justify-center">
     {#if menuSelectedComponent.contentComponent}
-      <svelte:component
-        this={menuSelectedComponent.contentComponent}
-      />
+      <svelte:component this={menuSelectedComponent.contentComponent} />
     {/if}
   </div>
   <div class="drawer-side">
-    <label for="friend-list" class="drawer-overlay" on:click|preventDefault={onMenuClick} on:keypress={onMenuClick} />
+    <label
+      for="friend-list"
+      class="drawer-overlay"
+      on:click|preventDefault={onMenuClick}
+      on:keypress={onMenuClick}
+    />
     <div class="flex flex-row bg-base-300 text-base-content shadow-lg w-fit">
       <div class="flex flex-col w-14 bg-base-300 h-full">
         {#if menuOpen}
@@ -145,20 +148,15 @@
             on:click={async () => {
               if (menu.name == "logout") {
                 await auth.logout();
-                goto("/login")
-              } else
-                menuSelected = ["bottom", i]
+              } else menuSelected = ["bottom", i];
             }}
           />
         {/each}
       </div>
 
-      
       <div class="h-full w-64">
         {#if menuSelectedComponent.menuComponent}
-          <svelte:component
-            this={menuSelectedComponent.menuComponent}
-          />
+          <svelte:component this={menuSelectedComponent.menuComponent} />
         {/if}
       </div>
     </div>

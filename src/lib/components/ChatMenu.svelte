@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { screenStore, friendsStore } from "$lib/stores"
+  import { screenStore, friendsStore } from "$lib/stores";
   import { Icon } from "@steeze-ui/svelte-icon";
   import { User, UserPlus } from "@steeze-ui/heroicons";
   import { onMount } from "svelte";
-  
-  let friends: {[pub: string]: FriendProfile}
-  $: friends = {}
-  onMount(() => {   
-    friendsStore.subscribe(v => {
-      friends = v
-    })
-  })
-  let selectedMenu: string
-  $: selectedMenu = selectedMenu || (friends[0]||{}).pub || ":addFriend:";
-  $: screenStore.selectedChatMenu.set(selectedMenu)
+
+  let friends: { [pub: string]: FriendProfile };
+  $: friends = {};
+  onMount(() => {
+    friendsStore.subscribe((v) => {
+      friends = v;
+    });
+  });
+  let selectedMenu: string;
+  $: selectedMenu = selectedMenu || (friends[0] || {}).pub || ":addFriend:";
+  $: screenStore.selectedChatMenu.set(selectedMenu);
 </script>
 
 <div class="w-full h-full flex flex-col prose">
@@ -29,7 +29,7 @@
         : "hover:bg-base-100 bg-base-200"
     }`}
     on:click|preventDefault={() => {
-      selectedMenu = ":addFriend:"
+      selectedMenu = ":addFriend:";
     }}
   >
     <Icon src={UserPlus} theme="solid" class="color-gray-900 w-5 h-5" />
@@ -51,14 +51,14 @@
       <div class="avatar online">
         <div class="w-8 mask mask-squircle">
           {#if friend.picture}
-             <img class="m-0" src={friend.picture} alt="" />
+            <img class="m-0" src={friend.picture} alt="" />
           {:else}
             <Icon src={User} theme="solid" class="color-gray-900" />
           {/if}
         </div>
       </div>
-      <div class="truncate w-full text-md font-normal pb-0.5">
-        {friend.username||friend.pub}
+      <div class="truncate w-full text-md font-normal pb-0.5 text-left ml-2">
+        {friend.username || friend.pub}
       </div>
     </button>
   {/each}

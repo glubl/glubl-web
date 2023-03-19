@@ -44,7 +44,7 @@ export class SharedCreationFail extends Error {
   }
 }
 
-export class NotAuthenticated extends Error {
+export class Unauthenticated extends Error {
   constructor() {
     super("Not authenticated")
   }

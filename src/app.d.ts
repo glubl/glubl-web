@@ -42,12 +42,14 @@ declare type ChatMessage = {
   msg: string
   ts: number
   by: FriendProfile
+  to: FriendProfile
 }
 
 declare type ChatMessageGun = {
   msg: string
   ts: number
   by: string
+  to: string
 }
 
 declare interface _GunRoot extends IGunInstanceHookHandler {
@@ -83,3 +85,6 @@ declare type UserDatabase = {
   }
 }
 
+interface String {
+  toTitleCase(): string;
+}

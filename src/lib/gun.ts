@@ -9,7 +9,8 @@ import { gunStore, localGunStore } from "./stores"
 import type { GunOptions, IGunInstance, IGunInstanceRoot, IGunUserInstance, ISEA, ISEAPair } from "gun"
 import localforage from "localforage"
 import { get } from "svelte/store"
-import { NotAuthenticated } from "./errors"
+import { Unauthenticated } from "./errors"
+import { goto } from "$app/navigation"
 
 let gunApp: {
   gun: IGunInstance<any>;
@@ -41,15 +42,6 @@ const localStorage = localforage.createInstance({
   description: "Local Gun Storage"
 })
 
-options.store = {
-  put: globalStorage.setItem,
-  get: globalStorage.getItem
-}
-optionsLocal.store = {
-  put: localStorage.setItem,
-  get: localStorage.getItem
-}
-
 export async function init() {
   globalStorage.ready().then(() => {
     console.log(`Using ${globalStorage.driver()} for global storage`)
@@ -57,25 +49,43 @@ export async function init() {
   localStorage.ready().then(() => {
     console.log(`Using ${localStorage.driver()} for local storage`)
   })
-  
-  gunStore.subscribe((g) => {
-    if (!g) return
-    let user = g.user()
-    let pair = (user._ as any).sea
-    gunApp = {
-      gun: g,
-      SEA: SEA,
-      user: user,
-      pair: pair
-    }
-  })
-  window.gun = Gun(options)
-  gunStore.set(window.gun)
-  localGunStore.set(Gun(optionsLocal))
+
+  // Need to deep copy to recreate gun because gun stores
+  // everything in opt object and it needs to be cleared.
+  const opt = JSON.parse(JSON.stringify(options))
+  const localOpt = JSON.parse(JSON.stringify(optionsLocal))
+  opt.store = {
+    put: globalStorage.setItem,
+    get: globalStorage.getItem
+  }
+  localOpt.store = {
+    put: localStorage.setItem,
+    get: localStorage.getItem
+  }
+
+  const gun = Gun(opt)
+  window.gun = gun;
+  gunStore.set(gun)
+
+  const localGun = Gun(localOpt)
+  localGunStore.set(localGun)
+}
+
+export function deinit() {
+  const gun = get(gunStore)
+  const opt = (gun as any).back("opt")
+  Object.entries(opt.peers).map(([k, v]) => opt.mesh.bye(v))
+  // Buggy
+  const user = gun.user()
+  user.leave();
+  (user._ as any).sea = undefined
 }
 
 export function getGun() {
-  if (!gunApp.pair)
-    throw new NotAuthenticated()
-  return gunApp
+  const gun = get(gunStore)
+  const user = gun.user()
+  const pair = (user._ as any).sea as ISEAPair
+  if (!pair)
+    goto("/login")
+  return { gun, SEA, user, pair }
 }
