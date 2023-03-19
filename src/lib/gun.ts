@@ -9,7 +9,7 @@ import { gunStore, localGunStore } from "./stores"
 import type { GunOptions, IGunInstance, IGunInstanceRoot, IGunUserInstance, ISEA, ISEAPair } from "gun"
 import localforage from "localforage"
 import { get } from "svelte/store"
-import { NotAuthenticated } from "./errors"
+import { Unauthenticated } from "./errors"
 
 let gunApp: {
   gun: IGunInstance<any>;
@@ -70,5 +70,7 @@ export function getGun() {
   const gun = get(gunStore)
   const user = gun.user()
   const pair = (user._ as any).sea as ISEAPair
+  if (!pair)
+    throw new Unauthenticated()
   return { gun, SEA, user, pair }
 }
