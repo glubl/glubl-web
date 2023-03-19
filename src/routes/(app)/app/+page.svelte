@@ -145,7 +145,6 @@
             on:click={async () => {
               if (menu.name == "logout") {
                 await auth.logout();
-                goto("/login")
               } else
                 menuSelected = ["bottom", i]
             }}

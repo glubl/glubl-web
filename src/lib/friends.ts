@@ -126,6 +126,7 @@ export const deinit = () => {
   Object.values(friendsEv).map(v => v.off())
   friendDataCache.set({})
   friendsStore.set({})
+  initatedFriends.clear()
 }
 
 export const sendFriendRequest = async (pairPub: {pub: string, epub: string}) => {

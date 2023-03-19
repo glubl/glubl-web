@@ -14,6 +14,8 @@
     if (!canAuthenticate() && 
       !(u.pathname.startsWith("/login") || u.pathname.startsWith("/register")))
       goto("/login")
+    else if (u.pathname == "/")
+      goto("/app")
   })
   onMount(async () => {
     window.onunhandledrejection = async(e) => {

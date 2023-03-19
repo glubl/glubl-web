@@ -10,7 +10,7 @@
   import type { GunHookMessagePut, IGunChain, IGunInstance, IGunOnEvent } from "gun";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
   import auth from "../auth";
-  import { get } from "svelte/store";
+  import { get, type Unsubscriber } from "svelte/store";
   import * as _ from "lodash";
 
   function onMenuClick() {
@@ -31,6 +31,7 @@
   let theirE: IGunOnEvent | null
   let chats: (ChatMessage & {index: number})[]
   let chatData: {[k: string]: ChatMessage} = {}
+  let profileUnsub: Unsubscriber | null
   const refreshChat = _.debounce(() => {
     chats = [
       ...Object.values(chatData)
@@ -47,6 +48,8 @@
 
   async function init(friend: FriendProfile) {
 
+    reset()
+
     if (!friend.pub)
       throw new Error("Friend profile somehow doesn't have public key??")
     if (!pair.pub)
@@ -61,7 +64,7 @@
     mySpace = gun.get("~"+friend.pub)
       .get("spaces")
       .get(mySpacePath)
-    profileStore.subscribe(v => {
+    profileUnsub = profileStore.subscribe(v => {
       if (v) {
         profilePathMap[mySpacePath] = {...v, space: mySpacePath}
       } else { console.warn("Somehow your profile is undefined???") }
@@ -71,8 +74,6 @@
     theirSpace = user
       .get("spaces")
       .get(theirSpacePath)
-      
-    clear()
 
     theirSpace
       .get("messages")
@@ -90,7 +91,12 @@
         myE = e
       })
   }
-  function clear() {
+  $: {
+    if (friend)
+      init(friend)
+  }
+
+  function reset() {
     if (myE) {
       myE.off()
       myE = null
@@ -101,11 +107,14 @@
     }
     chats = []
     chatData = {}
+    if (profileUnsub) {
+      profileUnsub()
+      profileUnsub = null
+    }
   }
-  $: friend && init(friend)
 
   onDestroy(() => {
-    clear()
+    reset()
   })
 
   async function receiveMessage(v: {[k: string]: string}, k: string) {

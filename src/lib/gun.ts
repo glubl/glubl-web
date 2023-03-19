@@ -10,6 +10,7 @@ import type { GunOptions, IGunInstance, IGunInstanceRoot, IGunUserInstance, ISEA
 import localforage from "localforage"
 import { get } from "svelte/store"
 import { Unauthenticated } from "./errors"
+import { goto } from "$app/navigation"
 
 let gunApp: {
   gun: IGunInstance<any>;
@@ -41,15 +42,6 @@ const localStorage = localforage.createInstance({
   description: "Local Gun Storage"
 })
 
-options.store = {
-  put: globalStorage.setItem,
-  get: globalStorage.getItem
-}
-optionsLocal.store = {
-  put: localStorage.setItem,
-  get: localStorage.getItem
-}
-
 export async function init() {
   globalStorage.ready().then(() => {
     console.log(`Using ${globalStorage.driver()} for global storage`)
@@ -57,13 +49,36 @@ export async function init() {
   localStorage.ready().then(() => {
     console.log(`Using ${localStorage.driver()} for local storage`)
   })
-  
-  const gun = Gun(options)
-  window.gun = gun
+
+  // Need to deep copy to recreate gun because gun stores
+  // everything in opt object and it needs to be cleared.
+  const opt = JSON.parse(JSON.stringify(options))
+  const localOpt = JSON.parse(JSON.stringify(optionsLocal))
+  opt.store = {
+    put: globalStorage.setItem,
+    get: globalStorage.getItem
+  }
+  localOpt.store = {
+    put: localStorage.setItem,
+    get: localStorage.getItem
+  }
+
+  const gun = Gun(opt)
+  window.gun = gun;
   gunStore.set(gun)
 
-  const localGun = Gun(optionsLocal)
+  const localGun = Gun(localOpt)
   localGunStore.set(localGun)
+}
+
+export function deinit() {
+  const gun = get(gunStore)
+  const opt = (gun as any).back("opt")
+  Object.entries(opt.peers).map(([k, v]) => opt.mesh.bye(v))
+  // Buggy
+  const user = gun.user()
+  user.leave();
+  (user._ as any).sea = undefined
 }
 
 export function getGun() {
@@ -71,6 +86,6 @@ export function getGun() {
   const user = gun.user()
   const pair = (user._ as any).sea as ISEAPair
   if (!pair)
-    throw new Unauthenticated()
+    goto("/login")
   return { gun, SEA, user, pair }
 }

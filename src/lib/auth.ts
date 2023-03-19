@@ -26,8 +26,8 @@ const auth = {
    */
   async login(stringKeyPair: string) {
     try {
-      // console.log(stringKeyPair)
-      const { user } = getGun()
+      const gun = get(gunStore)
+      const user = gun.user()
       const keyPair = JSON.parse(stringKeyPair)
       await this.verifyPair(keyPair)
       let authResp: any;
@@ -67,10 +67,12 @@ const auth = {
    * @returns {string}
    */
   async register(username: string) {
-    const { gun, SEA } = getGun()
+    const gun = get(gunStore)
+    const user = gun.user()
     const pair : ISEAPair = await SEA.pair()
+    user.auth(pair)
+
     const stringPair : string = JSON.stringify(pair).replace(/\%22/g,'"')
-    await this.login(stringPair)
     const userProfile: Profile = {
       picture: '',
       username: username,
@@ -96,21 +98,20 @@ const auth = {
       .put({messages: null})
       .put({profile: userProfileEnc})
 
+    await this.login(stringPair)
+
     return stringPair
   },
 
   async logout() {
-
-    // Buggy
-    const { gun } = getGun()
-    const user = gun.user()
-    user.leave();
-    (user._ as any).sea = undefined
-
+    
+    // db.deinit()
     localStorage.clear()
-    friends.deinit()
     stores.clear()
+    friends.deinit()
 
+    await goto("/login")
+    
     await db.init()
     // todo more cleanup if necessary
   },
