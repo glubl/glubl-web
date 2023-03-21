@@ -171,7 +171,7 @@
 >
   <!-- Causes slow when unload -->
   <!-- <VirtualList items={chats} let:item={chat}> -->
-  {#if screenStore.currentActiveCall}
+  {#if get(screenStore.currentActiveCall)}
     <div id="call-section h-60 w-full overflow-y-hidden">
       <CallScreen />
     </div>

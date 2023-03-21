@@ -4,7 +4,7 @@ import { writable } from "svelte/store"
 export const screenStore = {
   selectedChatMenu: writable<string>(),
   selectedFriendProfile: writable<FriendProfile | undefined>(),
-  currentActiveCall: writable<boolean>(true)
+  currentActiveCall: writable<boolean>(false)
 }
 
 export const localStream = writable<MediaStream | null>(null)

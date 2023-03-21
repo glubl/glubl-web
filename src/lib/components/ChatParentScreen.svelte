@@ -18,9 +18,13 @@
 </script>
 
 <div class="w-full h-full">
-  {#if selectedMenu === ":calls:"}
+  {#if selectedMenu === ":calls:" && get(screenStore.currentActiveCall)}
     <div class="flex flex-row h-full">
       <CallScreen />
+    </div>
+  {:else if selectedMenu === ":calls:"}
+    <div class="flex flex-row h-full">
+      <!-- <CallHistory /> -->
     </div>
   {:else if selectedMenu === ":addFriend:" || !friend}
     <AddFriend />
