@@ -12,6 +12,12 @@ declare type Message = {
   by: User
 }
 
+declare type CallChannel = {
+  endTs: number
+  startTs: number
+  key: string
+}
+
 declare type MenuScreen = {
   name: string
   icon: IconSource

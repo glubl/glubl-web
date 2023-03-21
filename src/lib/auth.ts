@@ -1,4 +1,3 @@
-import type { Profile } from "./types"
 import type { GunSchema, IGunChain, IGunInstanceRoot, ISEA, ISEAPair } from "gun"
 import { DecriptionFail, HashFail, InvalidPairError, ProfileNotSet } from "./errors"
 import { goto } from "$app/navigation"

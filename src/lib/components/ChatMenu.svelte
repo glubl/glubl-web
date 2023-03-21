@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { screenStore, friendsStore } from "$lib/stores";
+  import { screenStore, friendsStore, callExpanded } from "$lib/stores";
   import { Icon } from "@steeze-ui/svelte-icon";
-  import { User, UserPlus } from "@steeze-ui/heroicons";
+  import { User, UserPlus, Phone } from "@steeze-ui/heroicons";
   import { onMount } from "svelte";
 
   let friends: { [pub: string]: FriendProfile };
@@ -14,6 +14,7 @@
   let selectedMenu: string;
   $: selectedMenu = selectedMenu || (friends[0] || {}).pub || ":addFriend:";
   $: screenStore.selectedChatMenu.set(selectedMenu);
+  $: callExpanded.set(selectedMenu === ":calls:");
 </script>
 
 <div class="w-full h-full flex flex-col prose">
@@ -34,6 +35,19 @@
   >
     <Icon src={UserPlus} theme="solid" class="color-gray-900 w-5 h-5" />
     <p class="">Add Friend</p>
+  </button>
+  <button
+    class={`text-sm !rounded-md my-1 h-8 mx-2 px-2 gap-x-2 transition-colors duration-200 flex flex-row items-center active:bg-base-content/20 no-underline ${
+      selectedMenu === ":calls:"
+        ? "active bg-base-100"
+        : "hover:bg-base-100 bg-base-200"
+    }`}
+    on:click|preventDefault={() => {
+      selectedMenu = ":calls:";
+    }}
+  >
+    <Icon src={Phone} theme="solid" class="color-gray-900 w-5 h-5" />
+    <p class="">Calls</p>
   </button>
   {#each Object.entries(friends) as [pubKey, friend], i}
     <button

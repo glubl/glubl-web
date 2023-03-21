@@ -1,11 +1,10 @@
 <script lang="ts">
   import { Svrollbar } from "$lib/components/svrollbar";
   import { Icon } from "@steeze-ui/svelte-icon";
-  import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
-  import VirtualList from "@sveltejs/svelte-virtual-list";
-  import { onMount, onDestroy } from "svelte";
+  import { PaperAirplane, Phone, User } from "@steeze-ui/heroicons";
+  import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { screenStore, friendsStore, menuOpen, profileStore } from "../stores";
+  import { screenStore, profileStore } from "../stores";
   import { getGun } from "../gun";
   import type {
     GunHookMessagePut,
@@ -17,10 +16,8 @@
   import auth from "../auth";
   import { get, type Unsubscriber } from "svelte/store";
   import * as _ from "lodash";
-
-  function onMenuClick() {
-    menuOpen.update((v) => true);
-  }
+  import CallScreen from "./CallScreen.svelte";
+  import NavButton from "./NavButton.svelte";
 
   export let friend: FriendProfile;
 
@@ -37,6 +34,7 @@
   let chats: (ChatMessage & { index: number })[];
   let chatData: { [k: string]: ChatMessage } = {};
   let profileUnsub: Unsubscriber | null;
+  let notOnCall: boolean;
   const refreshChat = _.debounce(
     () => {
       chats = [
@@ -173,6 +171,11 @@
 >
   <!-- Causes slow when unload -->
   <!-- <VirtualList items={chats} let:item={chat}> -->
+  {#if screenStore.currentActiveCall}
+    <div id="call-section h-60 w-full overflow-y-hidden">
+      <CallScreen />
+    </div>
+  {/if}
   <div
     bind:this={viewport}
     id="viewport"
@@ -237,15 +240,11 @@
 
   <div
     id="header"
-    class="prose flex flex-row items-center h-14 w-[inherit] max-w-[inherit] py-4 px-2 backdrop-blur absolute shadow-lg top-0 bg-base-200/90"
+    class="prose flex flex-row items-center {get(screenStore.currentActiveCall)
+      ? 'top-60'
+      : 'top-0'} h-14 w-[inherit] max-w-[inherit] py-4 px-2 backdrop-blur absolute shadow-lg bg-base-200/90"
   >
-    <div
-      class="h-fit w-fit btn btn-outline btn-base btn-sm drawer-button lg:hidden p-2 !outline-none !border-none"
-      on:click={onMenuClick}
-      on:keypress
-    >
-      <Icon src={Bars3} theme="solid" class="color-gray-900 w-6 h-6" />
-    </div>
+    <NavButton />
     {#if friend.username}
       <h4 class="m-0 ml-2"><strong>{friend.username}</strong></h4>
     {/if}
@@ -257,14 +256,17 @@
       <code class="truncate max-w-fit">{friend.pub.slice(0, 48)}...</code>
     </button>
     <div class="flex-1" />
-    <button
-      class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
-      on:click={() => {
-        console.log("Calling... ", friend.pub);
-      }}
-    >
-      <Icon src={Phone} theme="solid" class="w-5 h-5 color-gray-900" />
-    </button>
+    {#if notOnCall}
+      <button
+        class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
+        on:click={() => {
+          console.log(`Calling ${friend.username}...`);
+          screenStore.currentActiveCall.set(true);
+        }}
+      >
+        <Icon src={Phone} theme="solid" class="w-5 h-5 color-gray-900" />
+      </button>
+    {/if}
   </div>
 
   <!-- Input -->
