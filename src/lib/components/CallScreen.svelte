@@ -27,19 +27,15 @@
   let fullScreen: boolean;
   let selectedMenu: string;
   let profileShow: number;
-  let myVideoElement: HTMLMediaElement = <HTMLMediaElement>(
-    document.getElementById(`userVideo-${myProfile!.pub}`)
-  );
-  let myAudioElement: HTMLMediaElement = <HTMLMediaElement>(
-    document.getElementById(`userAudio-${myProfile!.pub}`)
-  );
+  let myVideoElement: HTMLMediaElement | null;
+  let myAudioElement: HTMLMediaElement | null;
   screenStore.selectedChatMenu.subscribe((v) => (selectedMenu = v));
   callExpanded.subscribe((v) => {
     fullScreen = v;
     profileShow = v ? 8 : 4;
   });
   $: callExpanded.set(selectedMenu === ":calls:");
-  $: console.log(`camera: ${isCameraOn}, mic: ${isMicOn}`);
+  $: console.debug(`camera: ${isCameraOn}, mic: ${isMicOn}`);
 
   function endcall() {
     call.endCapture(myProfile?.pub);
@@ -72,10 +68,10 @@
   }
 
   onMount(() => {
-    myVideoElement = <HTMLMediaElement>(
+    myVideoElement = <HTMLMediaElement | null>(
       document.getElementById(`userVideo-${myProfile!.pub}`)
     );
-    myAudioElement = <HTMLMediaElement>(
+    myAudioElement = <HTMLMediaElement | null>(
       document.getElementById(`userAudio-${myProfile!.pub}`)
     );
 
@@ -84,10 +80,10 @@
     if (myAudioElement)
       localStreamStore.subscribe((v) => (myAudioElement.srcObject = v));
 
-    localStreamStore.subscribe((v) =>
-      console.log(myVideoElement, myAudioElement),
-    );
-    call.startCapture(myProfile?.pub, isCameraOn, isMicOn);
+    call.startCapture({
+      audio: isMicOn,
+      video: isCameraOn,
+    } as MediaStreamConstraints);
   });
 </script>
 

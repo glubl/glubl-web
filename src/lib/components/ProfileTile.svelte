@@ -16,7 +16,6 @@
   callExpanded.subscribe((v) => (expanded = v));
   $: callExpanded.set(selectedMenu === ":calls:");
   $: stream = !!myProfile ? $localStream : $remoteStreamMap[profile.pub];
-  $: console.log(!!myProfile, stream);
 </script>
 
 <div class="rounded-md flex flex-col items-center justify-center bg-base-200">

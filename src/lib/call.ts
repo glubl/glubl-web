@@ -23,20 +23,14 @@ export const call: any = {
   reject() { },
 
   // start only local media capture
-  async startCapture(profilePub: string, audio: any, video: any) {
+  async startCapture(constraints: MediaStreamConstraints) {
     console.log("starting media capture...")
-    
+    let { audio, peerIdentity, preferCurrentTab, video} = constraints
     navigator.mediaDevices
     .getUserMedia({ audio: audio, video: video })
     .then((stream)=>{
       stream.getAudioTracks().forEach(audio => audio.onmute = () => console.log("mic muted"))
       stream.getVideoTracks().forEach(video => video.onmute = () => console.log("cam off"))
-      // if (!audio) {
-      //   stream.getAudioTracks().forEach(audio => audio.enabled = false)
-      // }
-      // if (!video) {
-      //   stream.getVideoTracks().forEach(video => video.enabled = false)
-      // }
       localStream.set(stream)
       }).catch((err)=> {
         console.log("Unable to use camera:\n", {err})
@@ -61,11 +55,10 @@ export const call: any = {
       stream.getTracks().forEach((track) => track.enabled = false)
     }
     localStream.set(stream)
-    console.log("local tracks", get(localStream)?.getTracks())
   },
 
   // end only local media capture
-  async endCapture(profilePub: string) {
+  async endCapture() {
     if (get(localStream)) {
       get(localStream)!.getTracks().forEach((track) => track.stop())
     }
