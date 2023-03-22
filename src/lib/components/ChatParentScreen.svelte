@@ -11,6 +11,7 @@
   let friends: { [pub: string]: FriendProfile } = {};
   $: friend = friends[selectedMenu];
   $: selectedMenu;
+  $: onCall = get(screenStore.currentActiveCall);
   onMount(async () => {
     screenStore.selectedChatMenu.subscribe((v) => (selectedMenu = v));
     friendsStore.subscribe((v) => (friends = v));
@@ -18,7 +19,7 @@
 </script>
 
 <div class="w-full h-full">
-  {#if selectedMenu === ":calls:" && get(screenStore.currentActiveCall)}
+  {#if selectedMenu === ":calls:" && onCall}
     <div class="flex flex-row h-full">
       <CallScreen />
     </div>

@@ -4,53 +4,91 @@
     Phone,
     Mic,
     MicOff,
-    Camera,
-    CameraOff,
+    Video,
+    VideoOff,
   } from "@steeze-ui/feather-icons";
   import {
     profileStore,
-    localStream,
-    remoteStream,
+    localStream as localStreamStore,
     screenStore,
     callExpanded,
-  } from "../stores";
+  } from "@src/lib/stores";
   import callProfiles from "../mock/profiles";
   import ProfileTile from "./ProfileTile.svelte";
   import NavButton from "./NavButton.svelte";
+  import call from "@src/lib/call";
+  import { onMount } from "svelte";
 
   let myProfile = $profileStore;
   let calleeProfiles: { [pub: string]: FriendProfile } = callProfiles;
-  let isCameraOn: boolean = false;
+  let isCameraOn: boolean = true;
   let isMicOn: boolean = true;
+  let isAudioOnly: boolean = isMicOn && !isCameraOn;
   let fullScreen: boolean;
   let selectedMenu: string;
   let profileShow: number;
+  let myVideoElement: HTMLMediaElement = <HTMLMediaElement>(
+    document.getElementById(`userVideo-${myProfile!.pub}`)
+  );
+  let myAudioElement: HTMLMediaElement = <HTMLMediaElement>(
+    document.getElementById(`userAudio-${myProfile!.pub}`)
+  );
   screenStore.selectedChatMenu.subscribe((v) => (selectedMenu = v));
   callExpanded.subscribe((v) => {
     fullScreen = v;
     profileShow = v ? 8 : 4;
   });
   $: callExpanded.set(selectedMenu === ":calls:");
-  function startcall() {
-    // toggle call (and media stream)
-    // call.start()
-    toggleCamera();
-    toggleMic();
-    return "call object";
-  }
+  $: console.log(`camera: ${isCameraOn}, mic: ${isMicOn}`);
+
   function endcall() {
-    // call.endCall()
+    call.endCapture(myProfile?.pub);
     isCameraOn = false;
     isMicOn = false;
+    updateElement();
     // clear all media stream
   }
-  const toggleCamera = () => {
+  function toggleCamera() {
     isCameraOn = !isCameraOn;
-    if (isCameraOn) {
-      // call.startCam();
+    updateElement();
+  }
+  function toggleMic() {
+    isMicOn = !isMicOn;
+    updateElement();
+  }
+  function updateElement() {
+    call.updateCapture({
+      audio: isMicOn,
+      video: isCameraOn,
+    } as MediaStreamConstraints);
+    if (myVideoElement) {
+      myVideoElement.hidden = !isCameraOn;
+      myVideoElement.srcObject = $localStreamStore;
     }
-  };
-  const toggleMic = () => (isMicOn = !isMicOn);
+    if (myAudioElement) {
+      myAudioElement.hidden = !isAudioOnly;
+      myAudioElement.srcObject = $localStreamStore;
+    }
+  }
+
+  onMount(() => {
+    myVideoElement = <HTMLMediaElement>(
+      document.getElementById(`userVideo-${myProfile!.pub}`)
+    );
+    myAudioElement = <HTMLMediaElement>(
+      document.getElementById(`userAudio-${myProfile!.pub}`)
+    );
+
+    if (myVideoElement)
+      localStreamStore.subscribe((v) => (myVideoElement.srcObject = v));
+    if (myAudioElement)
+      localStreamStore.subscribe((v) => (myAudioElement.srcObject = v));
+
+    localStreamStore.subscribe((v) =>
+      console.log(myVideoElement, myAudioElement),
+    );
+    call.startCapture(myProfile?.pub, isCameraOn, isMicOn);
+  });
 </script>
 
 <div
@@ -75,7 +113,7 @@
       : 'flex flex-row h-full w-full space-x-2 overflow-x-auto'}"
   >
     {#if myProfile}
-      <ProfileTile profile={myProfile} />
+      <ProfileTile profile={myProfile} {myProfile} />
     {/if}
     {#each Object.entries(calleeProfiles).slice(0, profileShow) as [key, profile]}
       <ProfileTile {profile} />
@@ -99,18 +137,18 @@
       ? 'pb-8 pt-2 sticky bottom-0 rounded-t-2xl bg-base-200'
       : 'rounded-2xl'}"
   >
-    <button class="btn btn-error btn-circle p-3" on:click={startcall}
+    <button class="btn btn-error btn-circle p-3" on:click={endcall}
       ><Icon src={Phone} theme="solid" /></button
     >
     <button
       class="btn {isMicOn ? 'btn-accent' : 'btn-error'} btn-circle p-3"
-      on:click={endcall}
+      on:click={toggleMic}
       ><Icon src={isMicOn ? Mic : MicOff} theme="solid" /></button
     >
     <button
       class="btn {isCameraOn ? 'btn-accent' : 'btn-error'} btn-circle p-3"
       on:click={toggleCamera}
-      ><Icon src={isCameraOn ? Camera : CameraOff} theme="solid" /></button
+      ><Icon src={isCameraOn ? Video : VideoOff} theme="solid" /></button
     >
   </div>
   <!-- Buttons -->

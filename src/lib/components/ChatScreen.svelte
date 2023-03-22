@@ -34,7 +34,7 @@
   let chats: (ChatMessage & { index: number })[];
   let chatData: { [k: string]: ChatMessage } = {};
   let profileUnsub: Unsubscriber | null;
-  let notOnCall: boolean;
+  $: onCall = get(screenStore.currentActiveCall);
   const refreshChat = _.debounce(
     () => {
       chats = [
@@ -171,7 +171,7 @@
 >
   <!-- Causes slow when unload -->
   <!-- <VirtualList items={chats} let:item={chat}> -->
-  {#if get(screenStore.currentActiveCall)}
+  {#if onCall}
     <div id="call-section h-60 w-full overflow-y-hidden">
       <CallScreen />
     </div>
@@ -256,7 +256,7 @@
       <code class="truncate max-w-fit">{friend.pub.slice(0, 48)}...</code>
     </button>
     <div class="flex-1" />
-    {#if notOnCall}
+    {#if !onCall}
       <button
         class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
         on:click={() => {
