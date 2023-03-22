@@ -4,43 +4,15 @@ import "gun/lib/then"
 import "gun/lib/radix"
 import "gun/lib/radisk"
 import "gun/lib/store"
+import "./webrtc"
 
-import { gunStore, localGunStore } from "./stores"
-import type { GunOptions, IGunInstance, IGunInstanceRoot, IGunUserInstance, ISEA, ISEAPair } from "gun"
+import { gunStore, localGunStore } from "../stores"
+import type { ISEAPair } from "gun"
 import localforage from "localforage"
 import { get } from "svelte/store"
-import { Unauthenticated } from "./errors"
 import { goto } from "$app/navigation"
-
-let gunApp: {
-  gun: IGunInstance<any>;
-  SEA: ISEA;
-  user: IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>;
-  pair: ISEAPair;
-}
-
-const options : GunOptions & {[key: string]:any} = {
-    peers: ["https://gun.dirtboll.com/gun"],
-    file: "global",
-}
-
-const optionsLocal : GunOptions & {[key: string]:any} = {
-    peers: [],
-    file: "local",
-    WebSocket: false,
-    ws: false,
-    RTCPeerConnection: false
-}
-
-const globalStorage = localforage.createInstance({
-  name: options.file || "global",
-  description: "Global Gun Storage"
-})
-
-const localStorage = localforage.createInstance({
-  name: optionsLocal.file || "local",
-  description: "Local Gun Storage"
-})
+import { options, optionsLocal } from "./opts"
+import { globalStorage, localStorage } from "./storage"
 
 export async function init() {
   globalStorage.ready().then(() => {

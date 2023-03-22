@@ -2,7 +2,6 @@
   import { Svrollbar } from "$lib/components/svrollbar";
   import { Icon } from "@steeze-ui/svelte-icon";
   import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
-  import VirtualList from "@sveltejs/svelte-virtual-list";
   import { onMount, onDestroy } from "svelte";
   import * as dayjs from "dayjs";
   import { screenStore, friendsStore, menuOpen, profileStore } from "../stores";
