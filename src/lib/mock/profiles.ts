@@ -1,11 +1,4 @@
 const callProfiles: { [pub: string]: FriendProfile } = {
-    "k7xgkAZMuqxSdZ4uxcXeSCOaMWL8QUyFhbn0oLRhgA8.JsMekej3P9kU0As6ogl_FSj1bFkulzU0mxA_h61asWE": {
-        epub:"xTp39HpGe-rrKF-R0q-CPGGC3aaxDhheXbNESswNm0I.5-QWmmErFO_wfN-nAwdYba1elt3uLLrGiSj72AS1c-I",
-        picture:"https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?cs=srgb&dl=pexels-pixabay-220453.jpg",
-        pub:"k7xgkAZMuqxSdZ4uxcXeSCOaMWL8QUyFhbn0oLRhgA8.JsMekej3P9kU0As6ogl_FSj1bFkulzU0mxA_h61asWE",
-        space:"mP6BFke9glcNMivVGvgDkQxFxyRSmvi1CXXSGcXeIXw=",
-        username:"baba",
-    },
     "l8ygkAZMuqxSdZ4uxcXeSCOaMWL8QUyFhbn0oLRhgA8.JsMekej3P9kU0As6ogl_FSj1bFkulzU0mxA_h61asWF": {
         epub:"xTp39HpGe-rrKF-R0q-CPGGC3aaxDhheXbNESswNm0I.5-QWmmErFO_wfN-nAwdYba1elt3uLLrGiSj72AS1c-I",
         picture:"https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?cs=srgb&dl=pexels-pixabay-415829.jpg&fm=jpg&w=800&h=600",
@@ -53,7 +46,14 @@ const callProfiles: { [pub: string]: FriendProfile } = {
         picture:"https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?cs=srgb&dl=pexels-pixabay-415829.jpg&fm=jpg&w=800&h=600",
         pub:"q4rgkAZMuqxSdZ4uxcXeSCOaMWL8QUyFhbn0oLRhgA8.JsMekej3P9kU0As6ogl_FSj1bFkulzU0mxA_h61asWJ",
         space:"mP6BFke9glcNMivVGvgDkQxFxyRSmvi1CXXSGcXeIXw=",
-        username:"jaja",
+        username:"kaka",
+    },
+    "r5sgkAZMuqxSdZ4uxcXeSCOaMWL8QUyFhbn0oLRhgA8.JsMekej3P9kU0As6ogl_FSj1bFkulzU0mxA_h61asWK": {
+        epub:"xTp39HpGe-rrKF-R0q-CPGGC3aaxDhheXbNESswNm0I.5-QWmmErFO_wfN-nAwdYba1elt3uLLrGiSj72AS1c-I",
+        picture:"https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?cs=srgb&dl=pexels-pixabay-220453.jpg",
+        pub:"r5sgkAZMuqxSdZ4uxcXeSCOaMWL8QUyFhbn0oLRhgA8.JsMekej3P9kU0As6ogl_FSj1bFkulzU0mxA_h61asWK",
+        space:"mP6BFke9glcNMivVGvgDkQxFxyRSmvi1CXXSGcXeIXw=",
+        username:"lala",
     },
 }
 
