@@ -1,6 +1,6 @@
 import { DecriptionFail, EncryptionFail, HashFail, SharedCreationFail, VerifyFail } from "./errors"
 import dayjs from "dayjs";
-import { getGun } from "./gun";
+import { getGun } from "./db";
 import auth from "./auth";
 import type { IGunOnEvent, ISEAPair, _GunRoot } from "gun";
 import { friendsStore } from "./stores";

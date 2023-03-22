@@ -5,6 +5,7 @@ import "gun/lib/radix"
 import "gun/lib/radisk"
 import "gun/lib/store"
 import "./webrtc"
+import "./nts"
 
 import { gunStore, localGunStore } from "../stores"
 import type { ISEAPair } from "gun"
@@ -13,6 +14,8 @@ import { get } from "svelte/store"
 import { goto } from "$app/navigation"
 import { options, optionsLocal } from "./opts"
 import { globalStorage, localStorage } from "./storage"
+
+// (Gun.state as any).drift += 2000
 
 export async function init() {
   globalStorage.ready().then(() => {

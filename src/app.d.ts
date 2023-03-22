@@ -1,5 +1,3 @@
-import { _GunRoot } from "gun"
-
 declare global {
   type User = {
     profilePicture: string
@@ -64,18 +62,17 @@ declare global {
   }
 }
 
+
+import {  } from "gun"
 declare module "gun" {
-  interface _GunRoot {
+  export interface IGunInstanceHookHandler {
     sea?: ISEAPair;
     $: { _: _GunRoot };
   
-    /**
-     * Current GUN options
-     */
-    opt: GunOptions;
-  
     on(event: 'friend', data: {pub: string, epub: string, path: string, mypath: string}): void;
+    on(event: 'friend', callback: (friend: {pub: string, epub: string, path: string, mypath: string}) => void)
   }
+  
 }
 
 
