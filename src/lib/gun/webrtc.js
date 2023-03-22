@@ -139,7 +139,7 @@
         peer.onicecandidate = function(e){ // source: EasyRTC!
           console.log("ice", e)
           if(!e.candidate){ return }
-          send({'@': msg['#'], ok: {rtc: {candidate: e.candidate, id: opt.pid}}})
+          send({'@': msg['#'], ok: {rtc: {candidate: e.candidate, id: user._.sea.pub}}})
         }
         peer.ondatachannel = function(e){
           console.log("data-chan", e)
@@ -154,14 +154,14 @@
           peer.createAnswer(function(answer){
             console.log("answer", answer)
             peer.setLocalDescription(answer);
-            send({'@': msg['#'], ok: {rtc: {answer: answer, id: opt.pid}}})
+            send({'@': msg['#'], ok: {rtc: {answer: answer, id: user._.sea.pub}}})
           }, function(){}, opt.rtc.sdp);
           return;
         }
         peer.createOffer(function(offer){
           console.log("create-offer", offer)
           peer.setLocalDescription(offer);
-          send({'@': msg['#'], '#': root.ask(recieve), ok: {rtc: {offer: offer, id: opt.pid}}})
+          send({'@': msg['#'], '#': root.ask(recieve), ok: {rtc: {offer: offer, id: user._.sea.pub}}})
         }, function(){}, opt.rtc.sdp);
         console.log("end-open", peer)
         return peer;
