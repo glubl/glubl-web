@@ -48,8 +48,8 @@
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun.sipgate.net:3478" },
-        { urls: "stun:relay.metered.ca:80" }
         /*,
+      { urls: "stun:relay.metered.ca:80" }
       {urls: "stun:stun.stunprotocol.org"},
       {urls: "stun:stun.sipgate.net:10000"},
       {urls: "stun:217.10.68.152:10000"},
