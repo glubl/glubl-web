@@ -47,7 +47,7 @@
     opt.rtc = opt.rtc || {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun.sipgate.net:3478" },
+        { urls: "stun:stun.sipgate.net:3478" }
         /*,
       { urls: "stun:relay.metered.ca:80" }
       {urls: "stun:stun.stunprotocol.org"},
