@@ -139,7 +139,7 @@
         peer.onicecandidate = function(e){ // source: EasyRTC!
           console.log("ice", e)
           if(!e.candidate){ return }
-          const candidate = JSON.stringify(JSON.parse(e.candidate))
+          const candidate = JSON.parse(JSON.stringify(e.candidate))
           send({'@': msg['#'], ok: {rtc: {candidate: candidate, id: user._.sea.pub}}})
         }
         peer.ondatachannel = function(e){
