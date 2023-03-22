@@ -102,6 +102,12 @@ const initiateFriendData = debounceByParam(async(d: string) => {
   if (!friendDataEnc) {
     updateFrendData(friendData)
   }
+
+  const sharedSpace = await auth.getUserSpacePath(friendData.pub, shared)
+
+  setTimeout(() => {
+    gun._.on("friend", {...friendData, path: sharedSpace, mypath: mySpacePath})
+  }, 1)
   
 }, (a) => a, 1000, {'leading': true, 'trailing': false})
 
@@ -215,11 +221,9 @@ export const addFriend = async (pairPub: {pub: string, epub: string}) => {
     throw new SharedCreationFail()
 
   const sharedSpace = await auth.setupSharedSpace(pairPub.pub, shared)
-  const mySharedSpace = await auth.getUserSpacePath(pair.pub, shared)
+  // const mySharedSpace = await auth.getUserSpacePath(pair.pub, shared)
   const friendPath = await auth.getUserSpacePath(pairPub.pub, pair.epriv)
-  setTimeout(() => {
-    gun._.on("friend", {...pairPub, path: sharedSpace, mypath: mySharedSpace})
-  }, 1)
+  
   const pairPubEnc = await SEA.encrypt({
     ...pairPub,
     space: sharedSpace

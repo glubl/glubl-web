@@ -1,5 +1,6 @@
 (function () {
-  var Gun = typeof window !== "undefined" ? window.Gun : require("../gun");
+  if (typeof window === "undefined") return
+  var Gun = window.Gun
   Gun.on("opt", function (root) {
     this.to.next(root);
     var opt = root.opt;
@@ -71,15 +72,15 @@
       (Gun.window && (location.hash.slice(1) || location.pathname.slice(1)));
     var mesh = (opt.mesh = opt.mesh || Gun.Mesh(root));
 
-    ack = {
-      ok: { // encrypted - signed
-        rtc: { 
-          id: p.pub,
-          answer: {},
-          candidate: {}
-        }
-      }
-    }
+    // ack = {
+    //   ok: { // encrypted - signed
+    //     rtc: { 
+    //       id: p.pub,
+    //       answer: {},
+    //       candidate: {}
+    //     }
+    //   }
+    // }
 
     var pending =  opt.rtc.pending = {}
     const SEA = Gun.SEA || GUN.SEA || window?.SEA
@@ -156,7 +157,7 @@
       }
       
       async function recieve(ack) {
-        if(!ack.ok){ return }
+        if(!ack.ok || typeof ack.ok !== 'string'){ return }
         var enc = await SEA.verify(ack.ok, friend)
         if (!enc) return
         var dat = await SEA.decrypt(enc, secret)
