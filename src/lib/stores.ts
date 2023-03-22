@@ -4,11 +4,11 @@ import { writable } from "svelte/store"
 export const screenStore = {
   selectedChatMenu: writable<string>(),
   selectedFriendProfile: writable<FriendProfile | undefined>(),
-  currentActiveCall: writable<boolean>(false)
+  currentActiveCall: writable<boolean>(true)
 }
 
 export const localStream = writable<MediaStream | null>(null)
-export const remoteStream = writable<MediaStream | null>(null)
+export const remoteStreamMap = writable<{[pub: string] : MediaStream | null}>({})
 
 export const menuOpen = writable(false)
 export const callExpanded = writable(false)
