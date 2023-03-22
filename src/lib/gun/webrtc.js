@@ -155,7 +155,7 @@
           peer.createAnswer(function(answer){
             console.log("answer", answer)
             peer.setLocalDescription(answer);
-            send({'@': msg['#'], ok: {rtc: {answer: JSON.parse(JSON.stringify(ans)), id: user._.sea.pub}}})
+            send({'@': msg['#'], ok: {rtc: {answer: JSON.parse(JSON.stringify(answer)), id: user._.sea.pub}}})
           }, function(){}, opt.rtc.sdp);
           return;
         }
