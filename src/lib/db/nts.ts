@@ -82,10 +82,11 @@ async function doSync(root: _GunRoot) {
         return sendNts(p)
       })
   )
-  res = res.filter((v) => dumbPeers.has(v.pid))
+  res = res.filter((v) => !dumbPeers.has(v.pid))
   if (res.length == 0) return
   let drift = res.map((a) => a.drift)
     .reduce((a, b) => a + b) / res.length
+  Gun.state.drift += drift
   console.log("end-dosync", drift)
 } 
 
@@ -97,7 +98,7 @@ Gun.on("opt", function init(root: _GunRoot) {
   mesh.hear.nts = hearNts
   setInterval(() => {
     doSync(root)
-  }, root.opt.ntsInterval || 30 * 1000)
+  }, root.opt.ntsInterval || 5 * 1000)
   doSync(root)
 })
 
