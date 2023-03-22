@@ -94,7 +94,7 @@
       if (!friend.pub || !friend.epub || !friend.path || !friend.mypath || !user || !user._.sea) return
       const secret = await SEA.secret(friend.epub, user._.sea)
       async function send(msg) {
-        console.log("start-send", msg)
+        console.log("start-send", JSON.parse(JSON.stringify(msg)))
         let enc = await SEA.encrypt(msg.ok, secret)
         let sig = await SEA.sign(enc, user._.sea)
         msg.ok = sig
@@ -139,7 +139,8 @@
         peer.onicecandidate = function(e){ // source: EasyRTC!
           console.log("ice", e)
           if(!e.candidate){ return }
-          send({'@': msg['#'], ok: {rtc: {candidate: e.candidate, id: user._.sea.pub}}})
+          const candidate = JSON.stringify(JSON.parse(e.candidate))
+          send({'@': msg['#'], ok: {rtc: {candidate: candidate, id: user._.sea.pub}}})
         }
         peer.ondatachannel = function(e){
           console.log("data-chan", e)
@@ -154,21 +155,21 @@
           peer.createAnswer(function(answer){
             console.log("answer", answer)
             peer.setLocalDescription(answer);
-            send({'@': msg['#'], ok: {rtc: {answer: answer, id: user._.sea.pub}}})
+            send({'@': msg['#'], ok: {rtc: {answer: JSON.parse(JSON.stringify(ans)), id: user._.sea.pub}}})
           }, function(){}, opt.rtc.sdp);
           return;
         }
         peer.createOffer(function(offer){
           console.log("create-offer", offer)
           peer.setLocalDescription(offer);
-          send({'@': msg['#'], '#': root.ask(recieve), ok: {rtc: {offer: offer, id: user._.sea.pub}}})
+          send({'@': msg['#'], '#': root.ask(recieve), ok: {rtc: {offer: JSON.parse(JSON.stringify(offer)), id: user._.sea.pub}}})
         }, function(){}, opt.rtc.sdp);
         console.log("end-open", peer)
         return peer;
       }
       
       async function recieve(ack) {
-        console.log("start-recieve", ack)
+        console.log("start-recieve", JSON.parse(JSON.stringify(ack)))
         if(!ack.ok || typeof ack.ok !== 'string'){ return }
         var enc = await SEA.verify(ack.ok, friend)
         if (!enc) return
