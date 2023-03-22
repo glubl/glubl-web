@@ -86,6 +86,7 @@
     const SEA = Gun.SEA || GUN.SEA || window?.SEA
     
     root.on("friend", async function (friend) {
+      console.log("start-friend", friend)
       var start = +new Date; // handle room logic:
       this.to.next(friend);
       var gun = root.$
@@ -93,12 +94,15 @@
       if (!friend.pub || !friend.epub || !friend.path || !friend.mypath || !user || !user._.sea) return
       const secret = await SEA.secret(friend.epub, user._.sea)
       async function send(msg) {
+        console.log("start-send", msg)
         let enc = await SEA.encrypt(msg.ok, secret)
         let sig = await SEA.sign(enc, user._.sea)
         msg.ok = sig
         root.on('out', msg)
+        console.log("end-send", msg)
       }
       function open(msg) {
+        console.log("start-open", msg)
         if(this && this.off){ this.off() } // Ignore this, because of ask / ack.
         if(!msg.ok){ return }
         var rtc = msg.ok.rtc, peer, tmp;
@@ -122,19 +126,23 @@
         wire.onclose = function(){ mesh.bye(peer) };
         wire.onerror = function(err){ };
         wire.onopen = function(e){
+          console.log("open", e)
           delete pending[rtc.id];
           mesh.hi(peer);
         }
         wire.onmessage = function(msg){
+          console.log("message", msg)
           if(!msg){ return }
           //console.log('via rtc');
           mesh.hear(msg.data || msg, peer);
         };
         peer.onicecandidate = function(e){ // source: EasyRTC!
+          console.log("ice", e)
           if(!e.candidate){ return }
           send({'@': msg['#'], ok: {rtc: {candidate: e.candidate, id: opt.pid}}})
         }
         peer.ondatachannel = function(e){
+          console.log("data-chan", e)
           var rc = e.channel;
           rc.onmessage = wire.onmessage;
           rc.onopen = wire.onopen;
@@ -144,19 +152,23 @@
           rtc.offer.sdp = rtc.offer.sdp.replace(/\\r\\n/g, '\r\n')
           peer.setRemoteDescription(new opt.RTCSessionDescription(tmp)); 
           peer.createAnswer(function(answer){
+            console.log("answer", answer)
             peer.setLocalDescription(answer);
             send({'@': msg['#'], ok: {rtc: {answer: answer, id: opt.pid}}})
           }, function(){}, opt.rtc.sdp);
           return;
         }
         peer.createOffer(function(offer){
+          console.log("create-offer", offer)
           peer.setLocalDescription(offer);
           send({'@': msg['#'], '#': root.ask(recieve), ok: {rtc: {offer: offer, id: opt.pid}}})
         }, function(){}, opt.rtc.sdp);
+        console.log("end-open", peer)
         return peer;
       }
       
       async function recieve(ack) {
+        console.log("start-recieve", ack)
         if(!ack.ok || typeof ack.ok !== 'string'){ return }
         var enc = await SEA.verify(ack.ok, friend)
         if (!enc) return
@@ -164,6 +176,7 @@
         if (!dat) return
         ack.ok = dat
         open(ack)
+        console.log("end-recieve", ack)
       }
       function announce() {
         user.get("spaces")
@@ -179,6 +192,7 @@
           })
       }
       setTimeout(announce, 1);
+      console.log("end-friend")
     })
   });
 })();
