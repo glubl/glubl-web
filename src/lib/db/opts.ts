@@ -10,5 +10,6 @@ export const optionsLocal : GunOptions & {[key: string]:any} = {
   file: "local",
   WebSocket: false,
   ws: false,
-  RTCPeerConnection: false
+  RTCPeerConnection: false,
+  ntp: false
 }

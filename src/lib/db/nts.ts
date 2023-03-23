@@ -1,105 +1,160 @@
-import Gun, { type GunOptions, type GunPeer, type _GunRoot } from "gun"
+import Gun, { type GunPeer, type _GunRoot } from "gun";
+import type * as g from "gun";
 
-type NTS = {
-  start: number
-  end?: number
-  prom: (value: NTSResult | PromiseLike<NTSResult>) => void
+
+type MeshSayFn = (
+  msg: {
+    dam: string, 
+    [k: string]: any
+  }, 
+  peers: { [pid: string]: GunPeer }
+) => void
+
+type GunOptions = g.GunOptions & {
+  ntp?: {
+    interval?: number
+    timeout?: number
+    smooth?: number
+    on?: boolean
+  }
+  peers: {[pid: string]: GunPeer }
+  mesh: {
+    say: MeshSayFn
+    hear: { [k: string]: MeshSayFn }
+  }
+}
+
+type NTP = {
+  t1: number
+  t2: number
+  t3: number
+  t4: number
+}
+
+type NTPResult = {
+  ntp: NTP
+  res: (value: NTPResult | PromiseLike<NTPResult>) => void
   peer: GunPeer
-  time?: number
+  offset: number
+  roundTrip: number
   timeout: ReturnType<typeof setTimeout>
 }
 
-type NTSResult = {
-  pid: string,
-  drift: number
-}
-
-let dumbPeers = new Set<string>()
-let pending: {[pid: string]: NTS} = {}
+let pending: {[pid: string]: NTPResult} = {}
+let timeoutPeers: {[pid: string]: number} = {}
 let mesh: any
 let timeout: number = 2 * 1000
 let interval: ReturnType<typeof setInterval>
+let peers: {[pid: string]: GunPeer} = {}
 
-function sendNts(peer: GunPeer) {
-  return new Promise<NTSResult>((res) => {
-    //console.log("start-sendnts")
-    let nts: NTS = {
-      start: Gun.state(),
-      prom: res,
-      peer: peer
+function sendNTP(peer: GunPeer) {
+  return new Promise<NTPResult>((res) => {
+    //console.log("start-sendntp")
+    
+    let ntp: NTPResult = {
+      ntp: { t1: Gun.state(), t2: 0, t3: 0, t4: 0 },
+      res: res,
+      peer: peer,
+      offset: 0,
+      roundTrip: 0,
+      // Handle peers that don't speak NTP
+      timeout: setTimeout(() => {
+        if (peer.id in pending) {
+          //console.log("peer-timeout", peer.id)
+          delete pending[peer.id]
+          timeoutPeers[peer.id] = (timeoutPeers[peer.id] || 0) + 1
+          res(ntp)
+        }
+      }, timeout)
     }
-    pending[peer.id] = nts
-    mesh.say({dam: "nts"}, {[peer.id]: peer})
-  
-    // Handle peers that don't speak NTS
-    nts.timeout = setTimeout(() => {
-      //console.log("timeout", pending)
-      if (peer.id in pending) {
-        //console.log("got-dumb-peer", peer)
-        delete pending[peer.id]
-        dumbPeers.add(peer.id)
-        res({pid: peer.id, drift: 0})
-      }
-    }, timeout)
-    //console.log("end-sendnts")
+    pending[peer.id] = ntp
+    mesh.say({dam: "ntp", ntp: {}}, {[peer.id]: peer})
+    //console.log("end-sendntp")
   })
 }
 
-function resolveNts(nts: NTS) {
-  //console.log("start-resolvents", nts)
-  if (!nts.end || !nts.time || !nts.start || !nts.prom) return
-  const latency = (nts.end - nts.start) / 2
-  const drift = nts.time - nts.end + latency
-  clearTimeout(nts.timeout)
-  nts.prom({pid: nts.peer.id, drift})
-  //console.log("end-resolvents", {pid: nts.peer.id, drift})
+function resolveNTP(ntpres: NTPResult) {
+  //console.log("start-resolventp")
+
+  const ntp = ntpres.ntp
+  ntpres.roundTrip = (ntp.t4 - ntp.t1) - (ntp.t3 - ntp.t2)
+  ntpres.offset = ((ntp.t2 - ntp.t1) + (ntp.t3 - ntp.t4)) / 2
+  clearTimeout(ntpres.timeout)
+  delete timeoutPeers[ntpres.peer.id]
+  ntpres.res(ntpres)
+
+  //console.log("end-resolventp", ntpres)
 }
 
-function hearNts(msg: NTS, peer: GunPeer) {
-  //console.log("start-hearnts", msg, peer)
-  if (!msg.time) {
-    mesh.say({dam: "nts", time: Gun.state()}, {[peer.id]: peer})
+function hearNTP(msg: { dam: 'ntp', ntp: NTP }, peer: GunPeer) {
+  //console.log("start-hearntp", msg, peer.id)
+
+  let asServer = false
+  if (!msg.ntp.t2 && !msg.ntp.t3) {
+    msg.ntp.t2 = Gun.state()
+    asServer = true
+  }
+
+  if (asServer) {
+    msg.ntp.t3 = Gun.state()
+    mesh.say({ dam: 'ntp', ntp: msg.ntp }, {[peer.id]: peer})
     return
   }
   
-  let nts = pending[peer.id]
-  if (!nts) return
-
-  nts.time = msg.time
-  nts.end = Gun.state()
+  let ntpres = pending[peer.id]
+  if (!ntpres) return
   delete pending[peer.id]
-  resolveNts(nts)
-  //console.log("end-hearnts")
+
+  ntpres.ntp.t4 = Gun.state()
+  ntpres.ntp.t2 = msg.ntp.t2
+  ntpres.ntp.t3 = msg.ntp.t3
+  resolveNTP(ntpres)
+
+  //console.log("end-hearntp")
 }
 
 async function doSync(root: _GunRoot) {
-  const opt = root.opt;
-  //console.log("start-dosync", opt.peers)
-  if (Object.keys(pending).length > 0) return
-  let res = await Promise.all(
-    Object.entries<GunPeer>(opt.peers)
-      .filter(([n, p]) => !dumbPeers.has(n))
-      .map(([n, p]) => {
-        return sendNts(p)
+  if (Object.keys(pending).length > 0 || Object.keys(peers).length == 0) return
+  const opt: GunOptions = root.opt as any;
+  
+  //console.log("start-dosync", peers)
+
+  let all = (await Promise.all(
+    Object.entries<GunPeer>(peers)
+      .map(([_, peer]) => {
+        return sendNTP(peer)
       })
-  )
-  res = res.filter((v) => !dumbPeers.has(v.pid))
-  if (res.length == 0) return
-  let drift = res.map((a) => a.drift)
-    .reduce((a, b) => a + b) / res.length
-  Gun.state.drift += drift
-  //console.log("end-dosync", drift)
+  )).filter((v) => !(v.peer.id in timeoutPeers))
+
+  if (all.length == 0) return
+
+  let drift = all.map((a) => a.offset)
+    .reduce((a, b) => a + b) / (all.length + (opt.ntp?.smooth || 2));
+  (Gun.state as any).drift += drift
+  //console.log("end-dosync", (Gun.state as any).drift, drift)
 } 
 
 
 Gun.on("opt", function init(root: _GunRoot) {
   this.to.next(root);
-  let opt = root.opt;
-  mesh = opt.mesh = opt.mesh || Gun.Mesh(root);
-  mesh.hear.nts = hearNts
+
+  (root as any).on("hi", function(peer: GunPeer) {
+    peers[peer.id] = peer
+    delete timeoutPeers[peer.id]
+  });
+  (root as any).on("bye", function(peer: GunPeer) {
+    delete peers[peer.id]
+  });
+
+  let opt = root.opt as GunOptions;
+  if ((opt.ntp as any) === false) return
+  opt.ntp ??= {}
+  mesh = opt.mesh = opt.mesh || (Gun as any).Mesh(root);
+  mesh.hear.ntp = hearNTP
   interval = setInterval(() => {
     doSync(root)
-  }, root.opt.ntsInterval || 5 * 1000)
+  }, opt.ntp.interval ??= 10 * 1000)
+  timeout = opt.ntp.timeout ??= opt.ntp.interval / 2
   doSync(root)
 })
 

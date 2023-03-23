@@ -122,12 +122,10 @@
         (peer = new opt.RTCPeerConnection(opt.rtc)).id = rtc.id;
         var wire = peer.wire = peer.createDataChannel('dc', opt.rtc.dataChannel);
         pending[rtc.id] = peer;
-        opt.peers[rtc.id] = peer
         wire.to = setTimeout(function(){delete pending[rtc.id]},1000*60);
         wire.onclose = function(){ 
           console.warn("closed")
           delete pending[rtc.id]
-          delete opt.peers[rtc.id]
           mesh.bye(peer)
         };
         wire.onerror = function(err){ };
