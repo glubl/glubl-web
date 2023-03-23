@@ -6,7 +6,7 @@
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
   import { addFriend, parseFriendRequest, sendFriendRequest } from "../friends";
-  import { getGun } from "../gun";
+  import { getGun } from "../db";
   import { friendsStore, menuOpen, profileStore } from "../stores";
 
   function onMenuClick() {

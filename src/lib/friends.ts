@@ -1,8 +1,8 @@
 import { DecriptionFail, EncryptionFail, HashFail, SharedCreationFail, VerifyFail } from "./errors"
 import dayjs from "dayjs";
-import { getGun } from "./gun";
+import { getGun } from "./db";
 import auth from "./auth";
-import type { IGunOnEvent, ISEAPair } from "gun";
+import type { IGunOnEvent, ISEAPair, _GunRoot } from "gun";
 import { friendsStore } from "./stores";
 import  _ from "lodash";
 import { writable, get } from "svelte/store";
@@ -102,6 +102,12 @@ const initiateFriendData = debounceByParam(async(d: string) => {
   if (!friendDataEnc) {
     updateFrendData(friendData)
   }
+
+  const sharedSpace = await auth.getUserSpacePath(friendData.pub, shared)
+
+  setTimeout(() => {
+    gun._.on("friend", {...friendData, path: sharedSpace, mypath: mySpacePath})
+  }, 1)
   
 }, (a) => a, 1000, {'leading': true, 'trailing': false})
 
@@ -215,7 +221,9 @@ export const addFriend = async (pairPub: {pub: string, epub: string}) => {
     throw new SharedCreationFail()
 
   const sharedSpace = await auth.setupSharedSpace(pairPub.pub, shared)
+  // const mySharedSpace = await auth.getUserSpacePath(pair.pub, shared)
   const friendPath = await auth.getUserSpacePath(pairPub.pub, pair.epriv)
+  
   const pairPubEnc = await SEA.encrypt({
     ...pairPub,
     space: sharedSpace

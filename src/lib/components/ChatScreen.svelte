@@ -2,11 +2,10 @@
   import { Svrollbar } from "$lib/components/svrollbar";
   import { Icon } from "@steeze-ui/svelte-icon";
   import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
-  import VirtualList from "@sveltejs/svelte-virtual-list";
   import { onMount, onDestroy } from "svelte";
   import * as dayjs from "dayjs";
   import { screenStore, friendsStore, menuOpen, profileStore } from "../stores";
-  import { getGun } from "../gun";
+  import { getGun } from "../db";
   import type { GunHookMessagePut, IGunChain, IGunInstance, IGunOnEvent } from "gun";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
   import auth from "../auth";

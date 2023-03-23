@@ -4,11 +4,11 @@ import { HashFail, InvalidPairError } from "./errors"
 import { goto } from "$app/navigation"
 import { gunStore } from "./stores"
 import { get } from "svelte/store"
-import { getGun } from "./gun"
+import { getGun } from "./db"
 import SEA from "gun/sea"
 
 import * as stores from "./stores"
-import * as db from "./gun"
+import * as db from "./db"
 import * as friends from "./friends"
 
 import { uniqueNamesGenerator, adjectives, colors, animals, type Config } from 'unique-names-generator';
