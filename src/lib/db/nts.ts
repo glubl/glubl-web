@@ -129,7 +129,7 @@ async function doSync(root: _GunRoot) {
   if (all.length == 0) return
 
   let drift = all.map((a) => a.offset)
-    .reduce((a, b) => a + b) / (all.length + (opt.ntp?.smooth || 2));
+    .reduce((a, b) => a + b) / (all.length + (opt.ntp?.smooth || 0));
   (Gun.state as any).drift += drift
   //console.log("end-dosync", (Gun.state as any).drift, drift)
 } 
