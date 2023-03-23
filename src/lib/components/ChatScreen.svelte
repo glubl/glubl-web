@@ -170,7 +170,7 @@
   <!-- Causes slow when unload -->
   <!-- <VirtualList items={chats} let:item={chat}> -->
   <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-16 pb-2">
-    <div bind:this={contents} id="contents" class="flex h-fit flex-col-reverse">
+    <div bind:this={contents} id="contents" class="flex h-fit w-full flex-col-reverse">
       {#each chats??[] as chat}
          <!-- content here -->
         {#if 
@@ -184,10 +184,8 @@
             >
               {dayjs.unix(chat.ts / 1000).format("hh:mm A")}
             </div>
-            <div class="flex flex-row items-start gap-x-2">
-              <div class="flex flex-col">
-                {chat.msg}
-              </div>
+            <div class="w-full min-w-0 inline-block break-words">
+              {chat.msg}
             </div>
           </div>
         {:else}
