@@ -9,6 +9,7 @@ export const screenStore = {
 
 export const localStream = writable<MediaStream | null>(null)
 export const remoteStreamMap = writable<{[pub: string] : MediaStream | null}>({})
+export const deviceLabels = writable<string[]>([]);
 
 export const menuOpen = writable(false)
 export const callExpanded = writable(false)

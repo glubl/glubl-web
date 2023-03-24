@@ -12,6 +12,9 @@
   export let myProfile: FriendProfile | null = null;
   let expanded: boolean;
   let selectedMenu: string;
+  let videoElement: HTMLMediaElement | null;
+  let audioElement: HTMLMediaElement | null;
+
   screenStore.selectedChatMenu.subscribe((v) => (selectedMenu = v));
   callExpanded.subscribe((v) => (expanded = v));
   $: callExpanded.set(selectedMenu === ":calls:");
@@ -20,11 +23,23 @@
 
 <div class="rounded-md flex flex-col items-center justify-center bg-base-200">
   <div class="flex flex-row justify-center items-center h-36 w-48">
-    <video id="userVideo-{profile.pub}" hidden={!stream} autoplay playsinline>
+    <video
+      id="userVideo-{profile.pub}"
+      hidden={!stream}
+      autoplay
+      playsinline
+      bind:this={videoElement}
+    >
       <track kind="captions" />
     </video>
-    <audio id="userAudio-{profile.pub}" hidden={!stream} autoplay playsinline />
-    {#if !stream}
+    <audio
+      id="userAudio-{profile.pub}"
+      hidden={!stream}
+      autoplay
+      playsinline
+      bind:this={audioElement}
+    />
+    {#key videoElement && videoElement.hidden}
       {#if profile.picture.length !== 0}
         <img
           class="{expanded
@@ -42,7 +57,7 @@
           <Icon src={User} alt="{profile.username} no profile picture" />
         </div>
       {/if}
-    {/if}
+    {/key}
   </div>
   <strong class="prose relative bottom-2">{profile.username}</strong>
 </div>
