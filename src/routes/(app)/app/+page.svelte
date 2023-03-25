@@ -100,7 +100,7 @@
       <svelte:component this={menuSelectedComponent.contentComponent} />
     {/if}
   </div>
-  <div class="drawer-side">
+  <div class="drawer-side overflow-y-hidden">
     <label
       for="friend-list"
       class="drawer-overlay"

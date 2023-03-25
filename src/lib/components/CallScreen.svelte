@@ -163,7 +163,7 @@
 </script>
 
 <div
-  class="flex flex-col flex-1 space-y-2 ${fullScreen
+  class="flex flex-col flex-1 ${fullScreen
     ? ''
     : 'bg-base-300 w-full h-60 py-2'}"
 >
@@ -178,7 +178,7 @@
 
   <!-- Room participants tiles -->
   <div
-    class="px-4 {fullScreen
+    class="m-4 {fullScreen
       ? 'place-self-center flex-1 grid md:grid-cols-3 grid-cols-2 md:auto-rows-[200px] auto-rows-[120px] gap-2 overflow-x-hidden overflow-y-auto'
       : 'flex flex-row h-full w-full space-x-2 overflow-x-auto'}"
   >
@@ -228,8 +228,8 @@
 
   <input type="checkbox" id="media-settings" class="modal-toggle" />
   <!-- Modal -->
-  <div class="modal modal-bottom sm:modal-middle">
-    <div class="modal-box">
+  <label for="media-settings" class="modal modal-bottom sm:modal-middle">
+    <label for="" class="modal-box relative">
       <form
         class="form-group bg-base-200 p-4"
         on:submit|preventDefault={onSettingsSaved}
@@ -249,9 +249,6 @@
           <div bind:this={videoinputGroup} />
         </div>
       </form>
-      <div class="modal-action">
-        <label for="media-settings" class="btn btn-accent prose">SAVE</label>
-      </div>
-    </div>
-  </div>
+    </label>
+  </label>
 </div>
