@@ -39,19 +39,30 @@ export const call: any = {
     },
 
   // update change on local media device
-   updateCapture(constraints: MediaStreamConstraints) {
+  async updateCapture(constraints: MediaStreamConstraints) {
     let stream = get(localStream)
-    let { audio, peerIdentity, preferCurrentTab, video} = constraints
+    let { audio, peerIdentity, preferCurrentTab, video } = constraints
+
     if (!stream) {return}
     if (audio && video) {
+      navigator.mediaDevices.getUserMedia((constraints))
+        .then((newStream) => {
+          stream?.getVideoTracks().forEach(track=> {track.stop(); stream?.removeTrack(track)});
+          newStream.getVideoTracks().forEach(track => stream?.addTrack(track))
+        })
       stream.getTracks().forEach((track) => track.enabled = true)
     } else if (audio) {
       stream.getAudioTracks().forEach((track) => track.enabled = true)
-      stream.getVideoTracks().forEach((track) => track.enabled = false)
+      stream.getVideoTracks().forEach((track) => {track.stop(); stream?.removeTrack(track)})
     } else if (video) {
+      navigator.mediaDevices.getUserMedia((constraints))
+        .then((newStream) => {
+          stream?.getVideoTracks().forEach(track=> {track.stop(); stream?.removeTrack(track)});
+          newStream.getVideoTracks().forEach(track => stream?.addTrack(track))
+        })
       stream.getAudioTracks().forEach((track) => track.enabled = false)
-      stream.getVideoTracks().forEach((track) => track.enabled = true)
     } else {
+      stream.getVideoTracks().forEach((track) => {track.stop(); stream?.removeTrack(track)})
       stream.getTracks().forEach((track) => track.enabled = false)
     }
     localStream.set(stream)
