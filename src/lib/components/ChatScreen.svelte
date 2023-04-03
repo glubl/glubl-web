@@ -204,7 +204,7 @@
                   <Icon src={User} theme="solid" class="color-gray-900" />  
                 {/if}
               </div>
-              <div class="flex flex-col">
+              <div class="w-full min-w-0 inline-block break-words">
                 <div class="flex flex-row gap-x-2 items-start">
                   <p class="font-semibold text-accent-content/80">
                     {chat.by.username}
@@ -213,7 +213,7 @@
                     {dayjs.unix(chat.ts / 1000).format("DD/MM/YYYY hh:mm A")}
                   </p>
                 </div>
-                {chat.msg}
+                  {chat.msg}
               </div>
             </div>
           </div>
