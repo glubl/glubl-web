@@ -6,7 +6,7 @@ import type { IGunOnEvent, ISEAPair, _GunRoot } from "gun";
 import { friendsStore } from "./stores";
 import  _ from "lodash";
 import { writable, get } from "svelte/store";
-import { debounceByParam } from "./utils";
+import { debounceByParam, getUserSpacePath } from "./utils";
 
 if (typeof window !== "undefined")
   window._ = _
@@ -75,7 +75,7 @@ const initiateFriendData = debounceByParam(async(d: string) => {
   if (!shared)
     throw new SharedCreationFail()
 
-  const mySpacePath = await auth.getUserSpacePath(pair.pub, shared)
+  const mySpacePath = await getUserSpacePath(pair.pub, shared)
 
   if (friendsEv[friendData.pub])
     friendsEv[friendData.pub].off()
@@ -103,7 +103,7 @@ const initiateFriendData = debounceByParam(async(d: string) => {
     updateFrendData(friendData)
   }
 
-  const sharedSpace = await auth.getUserSpacePath(friendData.pub, shared)
+  const sharedSpace = await getUserSpacePath(friendData.pub, shared)
 
   setTimeout(() => {
     gun._.on("friend", {...friendData, path: sharedSpace, mypath: mySpacePath})
@@ -114,7 +114,7 @@ const initiateFriendData = debounceByParam(async(d: string) => {
 
 export const init = async () => {
   const { gun, user, pair} = getGun()
-  const mySpacePath = await auth.getUserSpacePath(pair.pub, pair.epriv)
+  const mySpacePath = await getUserSpacePath(pair.pub, pair.epriv)
   user.get("friends")
     .on((v, _, __, e) => {
       // console.log("friends-init-ev", v)
@@ -198,7 +198,7 @@ export const parseFriendRequest = async (data64: string) => {
   if (!shared)
     throw new SharedCreationFail()
 
-  const mySpacePath = await auth.getUserSpacePath(pair.pub, shared)
+  const mySpacePath = await getUserSpacePath(pair.pub, shared)
   const otherProfileEnc = await gun.get("~"+req.pub).get("spaces")
     .get(mySpacePath)
     .get("profile")
@@ -222,7 +222,7 @@ export const addFriend = async (pairPub: {pub: string, epub: string}) => {
 
   const sharedSpace = await auth.setupSharedSpace(pairPub.pub, shared)
   // const mySharedSpace = await auth.getUserSpacePath(pair.pub, shared)
-  const friendPath = await auth.getUserSpacePath(pairPub.pub, pair.epriv)
+  const friendPath = await getUserSpacePath(pairPub.pub, pair.epriv)
   
   const pairPubEnc = await SEA.encrypt({
     ...pairPub,

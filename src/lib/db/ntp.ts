@@ -1,28 +1,4 @@
 import Gun, { type GunPeer, type _GunRoot } from "gun";
-import type * as g from "gun";
-
-
-type MeshSayFn = (
-  msg: {
-    dam: string, 
-    [k: string]: any
-  }, 
-  peers: { [pid: string]: GunPeer }
-) => void
-
-type GunOptions = g.GunOptions & {
-  ntp?: {
-    interval?: number
-    timeout?: number
-    smooth?: number
-    on?: boolean
-  }
-  peers: {[pid: string]: GunPeer }
-  mesh: {
-    say: MeshSayFn
-    hear: { [k: string]: MeshSayFn }
-  }
-}
 
 type NTP = {
   t1: number
@@ -46,6 +22,7 @@ let mesh: any
 let timeout: number = 2 * 1000
 let interval: ReturnType<typeof setInterval>
 let peers: {[pid: string]: GunPeer} = {}
+let smooth = 1
 
 function sendNTP(peer: GunPeer) {
   return new Promise<NTPResult>((res) => {
@@ -121,6 +98,7 @@ async function doSync(root: _GunRoot) {
 
   let all = (await Promise.all(
     Object.entries<GunPeer>(peers)
+      .filter(([pid, _]) => timeoutPeers[pid] || 0 < 5)
       .map(([_, peer]) => {
         return sendNTP(peer)
       })
@@ -129,7 +107,7 @@ async function doSync(root: _GunRoot) {
   if (all.length == 0) return
 
   let drift = all.map((a) => a.offset)
-    .reduce((a, b) => a + b) / (all.length + (opt.ntp?.smooth || 0));
+    .reduce((a, b) => a + b) / (all.length + smooth);
   (Gun.state as any).drift += drift
   //console.log("end-dosync", (Gun.state as any).drift, drift)
 } 
@@ -138,19 +116,28 @@ async function doSync(root: _GunRoot) {
 Gun.on("opt", function init(root: _GunRoot) {
   this.to.next(root);
 
-  (root as any).on("hi", function(peer: GunPeer) {
+  if ((root as any).once) {
+    return;
+  }
+  if (!Gun.Mesh) {
+    return;
+  }
+
+  root.on("hi", function(peer: GunPeer) {
     peers[peer.id] = peer
     delete timeoutPeers[peer.id]
   });
-  (root as any).on("bye", function(peer: GunPeer) {
+  root.on("bye", function(peer: GunPeer) {
     delete peers[peer.id]
   });
 
   let opt = root.opt as GunOptions;
-  if ((opt.ntp as any) === false) return
-  opt.ntp ??= {}
+  if (opt.ntp === false) return
+  if (opt.ntp === true || opt.ntp == null)
+    opt.ntp = {}
   mesh = opt.mesh = opt.mesh || (Gun as any).Mesh(root);
   mesh.hear.ntp = hearNTP
+  smooth = opt.ntp.smooth ??= smooth
   interval = setInterval(() => {
     doSync(root)
   }, opt.ntp.interval ??= 10 * 1000)

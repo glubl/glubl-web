@@ -1,16 +1,15 @@
 <script lang="ts">
-  import { Svrollbar } from "$lib/components/svrollbar";
   import { Icon } from "@steeze-ui/svelte-icon";
   import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { screenStore, friendsStore, menuOpen, profileStore } from "../stores";
+  import { menuOpen, profileStore } from "../stores";
   import { getGun } from "../db";
-  import type { GunHookMessagePut, IGunChain, IGunInstance, IGunOnEvent } from "gun";
+  import type { IGunChain, IGunOnEvent } from "gun";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
-  import auth from "../auth";
   import { get, type Unsubscriber } from "svelte/store";
   import * as _ from "lodash";
+  import { getUserSpacePath } from "../utils";
 
   function onMenuClick() {
     menuOpen.update(v => true)
@@ -59,7 +58,7 @@
       throw new SharedCreationFail()
     shared = _
 
-    mySpacePath = await auth.getUserSpacePath(pair.pub, shared)
+    mySpacePath = await getUserSpacePath(pair.pub, shared)
     mySpace = gun.get("~"+friend.pub)
       .get("spaces")
       .get(mySpacePath)
@@ -69,7 +68,7 @@
       } else { console.warn("Somehow your profile is undefined???") }
     })
 
-    theirSpacePath = await auth.getUserSpacePath(friend.pub, shared)
+    theirSpacePath = await getUserSpacePath(friend.pub, shared)
     theirSpace = user
       .get("spaces")
       .get(theirSpacePath)
