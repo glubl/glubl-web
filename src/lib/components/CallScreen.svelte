@@ -27,7 +27,7 @@
 
   let isCameraOn: boolean = true;
   let isMicOn: boolean = true;
-  let isAudioOnly: boolean = isMicOn && !isCameraOn;
+  let isAudioOnly: boolean;
   let fullScreen: boolean;
   let selectedMenu: string;
   let profileShow: number;
@@ -44,8 +44,6 @@
     fullScreen = v;
     profileShow = v ? 8 : 4;
   });
-  $: callExpanded.set(selectedMenu === ":calls:");
-  $: audiooutputGroup, audioinputGroup, videoinputGroup;
 
   function startcall() {
     call.startCapture({
@@ -53,11 +51,7 @@
       video: isCameraOn,
     } as MediaStreamConstraints);
     const stream = get(localStreamStore);
-    if (stream) {
-      stream.getTracks().forEach((track) => {
-        if (!!track) selectedDeviceLabels.add(track.label);
-      });
-    }
+
     navigator.mediaDevices.ondevicechange = (ev) => {
       getDevices();
       updateElement();
@@ -78,12 +72,15 @@
   }
   function toggleCamera() {
     isCameraOn = !isCameraOn;
+    isAudioOnly = isMicOn && !isCameraOn;
     updateElement();
   }
   function toggleMic() {
     isMicOn = !isMicOn;
+    isAudioOnly = isMicOn && !isCameraOn;
     updateElement();
   }
+
   function updateElement() {
     call.updateCapture({
       audio: isMicOn,
@@ -144,6 +141,13 @@
       .catch((err) => `Unable to emumerate devices\n${err}`);
   }
   function onSettingsSaved(e: Event) {}
+
+  $: callExpanded.set(selectedMenu === ":calls:");
+  $: audiooutputGroup,
+    audioinputGroup,
+    videoinputGroup,
+    myAudioElement,
+    myVideoElement;
 
   onMount(() => {
     myVideoElement = <HTMLMediaElement | null>(
