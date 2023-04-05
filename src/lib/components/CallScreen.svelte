@@ -6,14 +6,12 @@
     MicOff,
     Video,
     VideoOff,
-    Settings,
   } from "@steeze-ui/feather-icons";
   import {
     profileStore,
     localStream as localStreamStore,
     screenStore,
     callExpanded,
-    deviceLabels,
   } from "@src/lib/stores";
   import callProfiles from "../mock/profiles";
   import ProfileTile from "./ProfileTile.svelte";
@@ -26,7 +24,7 @@
   let calleeProfiles: { [pub: string]: FriendProfile } = callProfiles;
 
   let isCameraOn: boolean = true;
-  let isMicOn: boolean = true;
+  let isMicOn: boolean = false;
   let isAudioOnly: boolean;
   let fullScreen: boolean;
   let selectedMenu: string;
@@ -34,9 +32,6 @@
 
   let myVideoElement: HTMLMediaElement | null;
   let myAudioElement: HTMLMediaElement | null;
-  let audiooutputGroup: HTMLElement | null;
-  let audioinputGroup: HTMLElement | null;
-  let videoinputGroup: HTMLElement | null;
   let selectedDeviceLabels: Set<string> = new Set();
 
   screenStore.selectedChatMenu.subscribe((v) => (selectedMenu = v));
@@ -53,7 +48,6 @@
     const stream = get(localStreamStore);
 
     navigator.mediaDevices.ondevicechange = (ev) => {
-      getDevices();
       updateElement();
       if (stream) {
         stream.getTracks().forEach((track) => {
@@ -61,7 +55,6 @@
         });
       }
     };
-    getDevices();
   }
   function endcall() {
     call.endCapture(myProfile?.pub);
@@ -88,67 +81,18 @@
     } as MediaStreamConstraints);
     if (myVideoElement) {
       myVideoElement.hidden = !isCameraOn;
-      myVideoElement.srcObject = $localStreamStore;
     }
     if (myAudioElement) {
       myAudioElement.hidden = !isAudioOnly;
-      myAudioElement.srcObject = $localStreamStore;
     }
   }
-  function addDeviceElem(device: MediaDeviceInfo) {
-    const existingElem = document.getElementById(device.label);
-    if (existingElem) {
-      return;
-    }
-    const entry = document.createElement("div");
-    entry.classList.add("form-control");
-    entry.id = device.label;
-    entry.innerHTML = `
-        <label class="label cursor-pointer">
-          <span class="label-text">${device.label}</span>
-          <input
-            type="radio"
-            name="${device.kind}"
-            class="radio checked:bg-accent"
-            checked=${selectedDeviceLabels.has(device.label)}
-          />
-        </label>`;
-
-    if (device.kind === "audioinput") {
-      audioinputGroup?.appendChild(entry);
-    } else if (device.kind === "videoinput") {
-      videoinputGroup?.appendChild(entry);
-    } else if (device.kind === "audiooutput") {
-      audiooutputGroup?.appendChild(entry);
-    }
-  }
-  function getDevices() {
-    navigator.mediaDevices
-      .enumerateDevices()
-      .then((devices) => {
-        const newList = devices.map((device) => device.label);
-        const removeList = $deviceLabels.filter(
-          (label) => newList.indexOf(label) < 0,
-        );
-        devices.forEach((device: MediaDeviceInfo) => {
-          addDeviceElem(device);
-        });
-        removeList.forEach((oldLabel) => {
-          document.getElementById(oldLabel)!.remove();
-        });
-        deviceLabels.set(devices.map((item) => item.label));
-      })
-      .catch((err) => `Unable to emumerate devices\n${err}`);
-  }
-  function onSettingsSaved(e: Event) {}
 
   $: callExpanded.set(selectedMenu === ":calls:");
-  $: audiooutputGroup,
-    audioinputGroup,
-    videoinputGroup,
-    myAudioElement,
-    myVideoElement;
-
+  $: myAudioElement, myVideoElement;
+  $: if (myVideoElement)
+    localStreamStore.subscribe((v) => (myVideoElement!.srcObject = v));
+  $: if (myAudioElement)
+    localStreamStore.subscribe((v) => (myAudioElement!.srcObject = v));
   onMount(() => {
     myVideoElement = <HTMLMediaElement | null>(
       document.getElementById(`userVideo-${myProfile!.pub}`)
@@ -156,11 +100,6 @@
     myAudioElement = <HTMLMediaElement | null>(
       document.getElementById(`userAudio-${myProfile!.pub}`)
     );
-
-    if (myVideoElement)
-      localStreamStore.subscribe((v) => (myVideoElement.srcObject = v));
-    if (myAudioElement)
-      localStreamStore.subscribe((v) => (myAudioElement.srcObject = v));
 
     startcall();
   });
@@ -224,35 +163,6 @@
       on:click={toggleCamera}
       ><Icon src={isCameraOn ? Video : VideoOff} theme="solid" /></button
     >
-    <label for="media-settings" class="btn btn-accent btn-circle p-3">
-      <Icon src={Settings} />
-    </label>
   </div>
   <!-- Buttons -->
-
-  <input type="checkbox" id="media-settings" class="modal-toggle" />
-  <!-- Modal -->
-  <label for="media-settings" class="modal modal-bottom sm:modal-middle">
-    <label for="" class="modal-box relative">
-      <form
-        class="form-group bg-base-200 p-4"
-        on:submit|preventDefault={onSettingsSaved}
-      >
-        <div>
-          <h3>Audio Input</h3>
-          <div bind:this={audioinputGroup} />
-        </div>
-        <div class="divider" />
-        <div>
-          <h3>Audio Output</h3>
-          <div bind:this={audiooutputGroup} />
-        </div>
-        <div class="divider" />
-        <div>
-          <h3>Video Input</h3>
-          <div bind:this={videoinputGroup} />
-        </div>
-      </form>
-    </label>
-  </label>
 </div>
