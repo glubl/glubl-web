@@ -25,47 +25,34 @@ export const call: any = {
   // start only local media capture
   async startCapture(constraints: MediaStreamConstraints) {
     console.log("starting media capture...")
-    let { audio, peerIdentity, preferCurrentTab, video} = constraints
-    navigator.mediaDevices
-    .getUserMedia({ audio: audio, video: video })
-    .then((stream)=>{
-      stream.getAudioTracks().forEach(audio => audio.onmute = () => console.log("mic muted"))
-      stream.getVideoTracks().forEach(video => video.onmute = () => console.log("cam off"))
-      localStream.set(stream)
-      }).catch((err)=> {
-        console.log("Unable to use camera:\n", {err})
-        return
-      })
-    },
+    let { audio, peerIdentity, preferCurrentTab, video } = constraints
+    let newStream: MediaStream
+    newStream = await navigator.mediaDevices
+      .getUserMedia({ audio: true, video: true })      
+    newStream.getVideoTracks().forEach(track => { if (!video) { newStream.removeTrack(track) } })
+    newStream.getAudioTracks().forEach(track => { if (!audio) { track.enabled = false } })
+    if (newStream) {
+      localStream.set(newStream)
+    }
+  },
 
   // update change on local media device
   async updateCapture(constraints: MediaStreamConstraints) {
     let stream = get(localStream)
+    let newStream : MediaStream
     let { audio, peerIdentity, preferCurrentTab, video } = constraints
 
     if (!stream) {return}
-    if (audio && video) {
-      navigator.mediaDevices.getUserMedia((constraints))
-        .then((newStream) => {
-          stream?.getVideoTracks().forEach(track=> {track.stop(); stream?.removeTrack(track)});
-          newStream.getVideoTracks().forEach(track => stream?.addTrack(track))
-        })
-      stream.getTracks().forEach((track) => track.enabled = true)
-    } else if (audio) {
-      stream.getAudioTracks().forEach((track) => track.enabled = true)
-      stream.getVideoTracks().forEach((track) => {track.stop(); stream?.removeTrack(track)})
-    } else if (video) {
-      navigator.mediaDevices.getUserMedia((constraints))
-        .then((newStream) => {
-          stream?.getVideoTracks().forEach(track=> {track.stop(); stream?.removeTrack(track)});
-          newStream.getVideoTracks().forEach(track => stream?.addTrack(track))
-        })
-      stream.getAudioTracks().forEach((track) => track.enabled = false)
+    if (!audio) {
+      constraints.audio = true
+      newStream = await navigator.mediaDevices.getUserMedia((constraints))
+      newStream.getAudioTracks().forEach(track => { 
+        track.enabled = !!audio; 
+      })
     } else {
-      stream.getVideoTracks().forEach((track) => {track.stop(); stream?.removeTrack(track)})
-      stream.getTracks().forEach((track) => track.enabled = false)
+      newStream = await navigator.mediaDevices.getUserMedia((constraints))
     }
-    localStream.set(stream)
+    localStream.set(newStream)
   },
 
   // end only local media capture
