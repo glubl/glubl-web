@@ -1,10 +1,12 @@
-import Gun, { type GunHookCallbackPut, type GunMesh, type GunPeer, type IGunHookContext, type IGunInstance, type _GunRoot } from "gun";
+import Gun, { type GunHookCallbackPut, type GunMesh, type GunPeer as GP, type IGunHookContext, type IGunInstance, type _GunRoot } from "gun";
 import SEA from "gun/sea"
 
 let gun: IGunInstance<any>
 let mesh: GunMesh
 let env: typeof window | typeof globalThis
 let opt: GunOptions
+
+type GunPeer = GP & RTCPeerConnection
 
 Gun.on("opt", init)
 
@@ -36,54 +38,88 @@ async function initFriend(this: IGunHookContext<GunHookFriend>,  friend: GunHook
     return
   }
 
-  function open(msg) {
-    console.log("start-open", msg)
-    if(this && this.off){ this.off() } // Ignore this, because of ask / ack.
-    if(!msg.ok){ return }
-    var rtc = msg.ok.rtc, peer, tmp;
-    if(!rtc || !rtc.id || rtc.id === user._.sea.pub){ return }
-    //console.log("webrtc:", JSON.stringify(msg));
-    if(tmp = rtc.answer){
-      if(!(peer = opt.peers[rtc.id] || pending[rtc.id]) || peer.remoteSet){ return }
-      tmp.sdp = tmp.sdp.replace(/\\r\\n/g, '\r\n');
-      return peer.setRemoteDescription(peer.remoteSet = new opt.RTCSessionDescription(tmp)); 
+  type RTCMsg = {
+    id: string
+    answer?: {
+      sdp: string;
+      type: RTCSdpType;
     }
-    if(tmp = rtc.candidate){
-      peer = opt.peers[rtc.id] || pending[rtc.id] || open({ok: {rtc: {id: rtc.id}}});
-      return peer.addIceCandidate(new opt.RTCIceCandidate(tmp));
+    candidate?: {
+      address: string | null;
+      candidate: string;
+      component: RTCIceComponent | null;
+      foundation: string | null;
+      port: number | null;
+      priority: number | null;
+      protocol: RTCIceProtocol | null;
+      relatedAddress: string | null;
+      relatedPort: number | null;
+      sdpMLineIndex: number | null;
+      sdpMid: string | null;
+      tcpType: RTCIceTcpCandidateType | null;
+      type: RTCIceCandidateType | null;
+      usernameFragment: string | null;
+    }
+    offer?: {
+      sdp?: string;
+      type: RTCSdpType;
+    }
+  }
+
+  let pending: {[pid: string]: GunPeer} = {}
+
+  function open(msg: RTCMsg): GunPeer | undefined {
+    console.log("start-open", msg)
+    if(!msg || !msg.id || msg.id === pair.pub)
+      return
+    //console.log("webrtc:", JSON.stringify(msg));
+    let tmp
+    if(msg.answer){
+      let peer = (opt.peers[msg.id] || pending[msg.id]) as GunPeer
+      if(!peer || (peer as any).remoteSet)
+        return
+      msg.answer.sdp = msg.answer.sdp.replace(/\\r\\n/g, '\r\n')
+      peer.setRemoteDescription((peer as any).remoteSet = new opt.RTCSessionDescription!(msg.answer))
+      return peer; 
+    }
+    if(msg.candidate){
+      let peer = (opt.peers[msg.id] || pending[msg.id] || open({id: msg.id})) as GunPeer;
+      peer.addIceCandidate(new opt.RTCIceCandidate!(msg.candidate))
+      return peer;
     }
     //if(opt.peers[rtc.id]){ return }
-    if(pending[rtc.id]){ return }
-    (peer = opt.peers[rtc.id] || new opt.RTCPeerConnection(opt.rtc)).id = rtc.id;
-    var wire = peer.wire = peer.createDataChannel('dc', opt.rtc.dataChannel);
-    pending[rtc.id] = peer;
-    wire.to = setTimeout(function(){delete pending[rtc.id]},1000*60);
+    if(pending[msg.id]){ return }
+    let peer = (opt.peers[msg.id] || new (opt.RTCPeerConnection as any)(opt.rtc)) as GunPeer
+    peer.id = msg.id;
+    var wire = peer.wire = peer.createDataChannel('dc', opt.rtc!.dataChannel);
+    pending[msg.id] = peer;
+    (wire as any).to = setTimeout(function(){delete pending[msg.id]},1000*60);
     wire.onclose = function(){ 
       console.log("closed: ", friend.pub)
-      resetReconnect()
+      setTimeout(reconnect, 1)
       mesh.bye(peer)
     };
     wire.onerror = function(err){
-      resetReconnect()
+      console.error("RTC err ", err)
+      setTimeout(reconnect, 1)
     };
     wire.onopen = function(e){
       console.log("open: ", friend.pub)
-      delete pending[rtc.id];
+      delete pending[msg.id];
       mesh.hi(peer);
+      resetReconnect()
     }
     wire.onmessage = function(msg){
-      console.log("message")
-      if(!msg){ return }
+      if(!msg) return
+      console.log("message");
       //console.log('via rtc');
-      clearTimeout(defer)
-      retry = 60
-      mesh.hear(msg.data || msg, peer);
+      (mesh as any).hear(msg, peer);
     };
     peer.onicecandidate = function(e){ // source: EasyRTC!
       console.log("ice", e)
       if(!e.candidate){ return }
       const candidate = JSON.parse(JSON.stringify(e.candidate))
-      send({'@': msg['#'], ok: {rtc: {candidate: candidate, id: user._.sea.pub}}})
+      send({candidate: candidate, id: pair.pub})
     }
     peer.ondatachannel = function(e){
       console.log("data-chan", e)
@@ -92,21 +128,30 @@ async function initFriend(this: IGunHookContext<GunHookFriend>,  friend: GunHook
       rc.onopen = wire.onopen;
       rc.onclose = wire.onclose;
     }
-    if(tmp = rtc.offer){
-      rtc.offer.sdp = rtc.offer.sdp.replace(/\\r\\n/g, '\r\n')
-      peer.setRemoteDescription(new opt.RTCSessionDescription(tmp)); 
-      peer.createAnswer(function(answer){
-        console.log("answer", answer)
-        peer.setLocalDescription(answer);
-        send({'@': msg['#'], ok: {rtc: {answer: JSON.parse(JSON.stringify(answer)), id: user._.sea.pub}}})
-      }, function(){}, opt.rtc.sdp);
-      return;
+    if(msg.offer){
+      if (!msg.offer.sdp) return
+      msg.offer.sdp = msg.offer.sdp.replace(/\\r\\n/g, '\r\n')
+      peer.setRemoteDescription(new opt.RTCSessionDescription!(msg.offer)) 
+        .then(() => peer.createAnswer(opt.rtc!.rtcOpt))
+        .then((answer) => peer.setLocalDescription(answer))
+        .then(() => {
+          console.log("answer", peer.localDescription)
+          send({answer: JSON.parse(JSON.stringify(peer.localDescription)), id: pair.pub})
+        })
+        .catch((e) => {
+          console.error("RTC answer: ", e)
+        })
+    } else {
+      peer.createOffer(opt.rtc!.rtcOpt)
+        .then((offer) => peer.setLocalDescription(offer))
+        .then(() => {
+          console.log("create-offer", peer.localDescription)
+          send({offer: JSON.parse(JSON.stringify(peer.localDescription)), id: pair.pub})
+        })
+        .catch((e) => {
+          console.error("RTC offer: ", e)
+        })
     }
-    peer.createOffer(function(offer){
-      console.log("create-offer", offer)
-      peer.setLocalDescription(offer);
-      send({'@': msg['#'], '#': root.ask(recieve), ok: {rtc: {offer: JSON.parse(JSON.stringify(offer)), id: user._.sea.pub}}})
-    }, function(){}, opt.rtc.sdp);
     console.log("end-open", peer)
     return peer;
   }
@@ -142,7 +187,7 @@ async function initFriend(this: IGunHookContext<GunHookFriend>,  friend: GunHook
       console.log("rtc-on-msg: ", v, k)
       if(start > dat.put['>'] || !v.d) 
         return
-      recieve(v)
+      recieve(v.d)
     })
 
   let wait = 2 * 999
@@ -161,7 +206,11 @@ async function initFriend(this: IGunHookContext<GunHookFriend>,  friend: GunHook
     }, wait)
     retry = retry - ((-lastTried + (lastTried = +new Date) < wait * 4) ? 1 : 0);
     wait = Math.min(wait * waitInc, waitLimit)
-    send({rtc: {id: pair.pub}})
+    send({id: pair.pub})
+  }
+  function resetReconnect() {
+    clearTimeout(defer)
+    retry = 60
   }
   
   setTimeout(reconnect, wait)
@@ -219,11 +268,9 @@ function initOpt() {
     ordered: false,
     maxRetransmits: 2,
   };
-  opt.rtc.sdp = opt.rtc.sdp || {
-    mandatory: { 
-      OfferToReceiveAudio: false, 
-      OfferToReceiveVideo: false 
-    },
+  opt.rtc.rtcOpt = opt.rtc.rtcOpt || {
+    offerToReceiveAudio: false, 
+    offerToReceiveVideo: false 
   };
   opt.rtc.max = opt.rtc.max || 55; // is this a magic number? // For Future WebRTC notes: Chrome 500 max limit, however 256 likely - FF "none", webtorrent does 55 per torrent.
   opt.rtc.room =

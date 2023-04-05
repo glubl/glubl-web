@@ -85,11 +85,10 @@ declare global {
         ordered: boolean,
         maxRetransmits: number,
       },
-      sdp?: {
-        mandatory: { 
-          OfferToReceiveAudio: boolean, 
-          OfferToReceiveVideo: boolean 
-        },
+      rtcOpt?: {
+        iceRestart?: boolean;
+        offerToReceiveAudio?: boolean;
+        offerToReceiveVideo?: boolean;
       },
       announce?: {
         interval?: number
@@ -127,8 +126,11 @@ declare module "gun" {
     once?: any
   }
   export interface GunMesh {
+    hi(peer: GunPeer & RTCPeerConnection): unknown;
+    bye(peer: GunPeer): unknown;
     say: gun.MeshSayFn
     hear: { [k: string]: gun.MeshSayFn }
+    hear: function (any, GunPeer)
   }
   export interface IGun {
     Mesh: function (_GunRoot): GunMesh
