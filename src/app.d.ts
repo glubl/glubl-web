@@ -74,15 +74,23 @@ declare global {
       on?: boolean
     } | boolean
     peers: {[pid: string]: GunPeer }
-    mesh: {
-      say: gun.MeshSayFn
-      hear: { [k: string]: gun.MeshSayFn }
-    }
+    mesh: GunMesh
     RTCPeerConnection?: typeof RTCPeerConnection
     RTCSessionDescription?: typeof RTCSessionDescription
     RTCIceCandidate?: typeof RTCIceCandidate
-    rtc?: RTCConfiguration | {
-      dataChannel?: RTCDataChannelInit
+    rtc?: RTCConfiguration & {
+      max?: number,
+      room?: string,
+      dataChannel?: RTCDataChannelInit & {
+        ordered: boolean,
+        maxRetransmits: number,
+      },
+      sdp?: {
+        mandatory: { 
+          OfferToReceiveAudio: boolean, 
+          OfferToReceiveVideo: boolean 
+        },
+      },
       announce?: {
         interval?: number
         retry?: number
@@ -114,8 +122,16 @@ declare module "gun" {
     peers: { [pid: string]: GunPeer }
   ) => void
   export interface _GunRoot {
-    opt: GunOptions
+    opt: global.GunOptions
     user?: IGunUserInstance
+    once?: any
+  }
+  export interface GunMesh {
+    say: gun.MeshSayFn
+    hear: { [k: string]: gun.MeshSayFn }
+  }
+  export interface IGun {
+    Mesh: function (_GunRoot): GunMesh
   }
   export interface IGunInstanceHookHandler {
     sea?: ISEAPair;

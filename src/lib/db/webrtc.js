@@ -86,28 +86,27 @@
     const SEA = Gun.SEA || GUN.SEA || window?.SEA
     
     root.on("friend", async function (friend) {
-      // console.log("start-friend", friend)
-      var start = +new Date; // handle room logic:
+      console.log("start-friend", friend)
       this.to.next(friend);
       var gun = root.$
       var user = root.user
       if (!friend.pub || !friend.epub || !friend.path || !friend.mypath || !user || !user._.sea) return
       const secret = await SEA.secret(friend.epub, user._.sea)
       async function send(msg) {
-        // console.log("start-send", JSON.parse(JSON.stringify(msg)))
+        console.log("start-send", JSON.parse(JSON.stringify(msg)))
         let enc = await SEA.encrypt(msg.ok, secret)
         let sig = await SEA.sign(enc, user._.sea)
         msg.ok = sig
         root.on('out', msg)
-        // console.log("end-send", msg)
+        console.log("end-send", msg)
       }
       function open(msg) {
-        // console.log("start-open", msg)
+        console.log("start-open", msg)
         if(this && this.off){ this.off() } // Ignore this, because of ask / ack.
         if(!msg.ok){ return }
         var rtc = msg.ok.rtc, peer, tmp;
         if(!rtc || !rtc.id || rtc.id === user._.sea.pub){ return }
-        //// console.log("webrtc:", JSON.stringify(msg));
+        //console.log("webrtc:", JSON.stringify(msg));
         if(tmp = rtc.answer){
           if(!(peer = opt.peers[rtc.id] || pending[rtc.id]) || peer.remoteSet){ return }
           tmp.sdp = tmp.sdp.replace(/\\r\\n/g, '\r\n');
@@ -119,35 +118,39 @@
         }
         //if(opt.peers[rtc.id]){ return }
         if(pending[rtc.id]){ return }
-        (peer = new opt.RTCPeerConnection(opt.rtc)).id = rtc.id;
+        (peer = opt.peers[rtc.id] || new opt.RTCPeerConnection(opt.rtc)).id = rtc.id;
         var wire = peer.wire = peer.createDataChannel('dc', opt.rtc.dataChannel);
         pending[rtc.id] = peer;
         wire.to = setTimeout(function(){delete pending[rtc.id]},1000*60);
         wire.onclose = function(){ 
-          console.warn("closed")
-          delete pending[rtc.id]
+          console.log("closed: ", friend.pub)
+          resetReconnect()
           mesh.bye(peer)
         };
-        wire.onerror = function(err){ };
+        wire.onerror = function(err){
+          resetReconnect()
+        };
         wire.onopen = function(e){
-          // console.log("open", e)
+          console.log("open: ", friend.pub)
           delete pending[rtc.id];
           mesh.hi(peer);
         }
         wire.onmessage = function(msg){
-          // console.log("message")
+          console.log("message")
           if(!msg){ return }
-          //// console.log('via rtc');
+          //console.log('via rtc');
+          clearTimeout(defer)
+          retry = 60
           mesh.hear(msg.data || msg, peer);
         };
         peer.onicecandidate = function(e){ // source: EasyRTC!
-          // console.log("ice", e)
+          console.log("ice", e)
           if(!e.candidate){ return }
           const candidate = JSON.parse(JSON.stringify(e.candidate))
           send({'@': msg['#'], ok: {rtc: {candidate: candidate, id: user._.sea.pub}}})
         }
         peer.ondatachannel = function(e){
-          // console.log("data-chan", e)
+          console.log("data-chan", e)
           var rc = e.channel;
           rc.onmessage = wire.onmessage;
           rc.onopen = wire.onopen;
@@ -157,49 +160,61 @@
           rtc.offer.sdp = rtc.offer.sdp.replace(/\\r\\n/g, '\r\n')
           peer.setRemoteDescription(new opt.RTCSessionDescription(tmp)); 
           peer.createAnswer(function(answer){
-            // console.log("answer", answer)
+            console.log("answer", answer)
             peer.setLocalDescription(answer);
             send({'@': msg['#'], ok: {rtc: {answer: JSON.parse(JSON.stringify(answer)), id: user._.sea.pub}}})
           }, function(){}, opt.rtc.sdp);
           return;
         }
         peer.createOffer(function(offer){
-          // console.log("create-offer", offer)
+          console.log("create-offer", offer)
           peer.setLocalDescription(offer);
           send({'@': msg['#'], '#': root.ask(recieve), ok: {rtc: {offer: JSON.parse(JSON.stringify(offer)), id: user._.sea.pub}}})
         }, function(){}, opt.rtc.sdp);
-        // console.log("end-open", peer)
+        console.log("end-open", peer)
         return peer;
       }
       
-      async function recieve(ack) {
-        // console.log("start-recieve", JSON.parse(JSON.stringify(ack)))
-        if(!ack.ok || typeof ack.ok !== 'string' || !ack.ok.startsWith("SEA")) return
-        var enc = await SEA.verify(ack.ok, friend)
-        if (!enc) {
-          console.warn("sig fail", ack, friend)
-          return
-        }
-        var dat = await SEA.decrypt(enc, secret)
-        if (!dat) {
-          console.warn("dec fil", ack, friend)
-          return
-        }
-        ack.ok = dat
-        open(ack)
-        // console.log("end-recieve", ack)
-      }
+      
+      let eve
+      var start
       function announce() {
+        if (eve) eve.off()
+        start = +new Date; // handle room logic:
         gun.get(`~${user._.sea.pub}/spaces/${friend.path}/RTC`)
           .put({'>': Gun.state()}, recieve, {acks: opt.rtc.max})
         gun.get(`~${friend.pub}/spaces/${friend.mypath}/RTC`)
-          .on(function(v, k, msg) {
+          .on(function(v, k, msg, e) {
+            eve = e
+            console.log("rtc-on-msg: ", v, msg, e)
             if(start > msg.put['>']) return
             open({'#': ''+msg['#'], ok: {rtc: {id: friend.pub}}})
           })
+        resetReconnect()
       }
-      setTimeout(announce, 1);
-      // console.log("end-friend")
+      announce()
+      
+
+      var wait = 5 * 999
+      var defer, retry = 60, tried, u
+      function resetReconnect() {
+        clearTimeout(defer);
+        defer = setTimeout(reconnect, wait)
+      }
+      resetReconnect()
+      function reconnect(){
+        if(doc && retry <= 0){ return }
+        console.log(!!doc)
+        retry = retry - ((-tried + (tried = +new Date) < wait*4)?1:0);
+        console.log("reconnect ", retry)
+        defer = setTimeout(function to(){
+          if(doc && doc.hidden){ return setTimeout(to,wait) }
+          announce()
+          resetReconnect()
+        }, 1);
+      }
+      var doc = (''+u !== typeof document) && document;
+      console.log("end-friend")
     })
   });
 })();
