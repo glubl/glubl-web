@@ -28,8 +28,8 @@ export const call: any = {
     let { audio, peerIdentity, preferCurrentTab, video } = constraints
     let newStream: MediaStream
     newStream = await navigator.mediaDevices
-      .getUserMedia({ audio: true, video: true })      
-    newStream.getVideoTracks().forEach(track => { if (!video) { newStream.removeTrack(track) } })
+      .getUserMedia({ audio: true, video: video })  
+    newStream.getVideoTracks().forEach(track => { if (!video) { track.stop(); newStream.removeTrack(track) } })
     newStream.getAudioTracks().forEach(track => { if (!audio) { track.enabled = false } })
     if (newStream) {
       localStream.set(newStream)
@@ -52,6 +52,7 @@ export const call: any = {
     } else {
       newStream = await navigator.mediaDevices.getUserMedia((constraints))
     }
+    stream.getTracks().forEach(track => track.stop())
     localStream.set(newStream)
   },
 

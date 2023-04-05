@@ -79,20 +79,24 @@
       audio: isMicOn,
       video: isCameraOn,
     } as MediaStreamConstraints);
-    if (myVideoElement) {
-      myVideoElement.hidden = !isCameraOn;
-    }
-    if (myAudioElement) {
-      myAudioElement.hidden = !isAudioOnly;
-    }
   }
 
   $: callExpanded.set(selectedMenu === ":calls:");
-  $: myAudioElement, myVideoElement;
-  $: if (myVideoElement)
+  $: myAudioElement;
+  $: myVideoElement;
+  $: $localStreamStore;
+  // $: console.log($localStreamStore?.getTracks());
+  $: if (myVideoElement) {
+    // console.log("video hidden", !isAudioOnly);
     localStreamStore.subscribe((v) => (myVideoElement!.srcObject = v));
-  $: if (myAudioElement)
+    myVideoElement.hidden = !isCameraOn;
+  }
+  $: if (myAudioElement) {
+    // console.log("audio hidden", !isAudioOnly);
     localStreamStore.subscribe((v) => (myAudioElement!.srcObject = v));
+    myAudioElement.hidden = !isAudioOnly;
+  }
+
   onMount(() => {
     myVideoElement = <HTMLMediaElement | null>(
       document.getElementById(`userVideo-${myProfile!.pub}`)
@@ -100,6 +104,12 @@
     myAudioElement = <HTMLMediaElement | null>(
       document.getElementById(`userAudio-${myProfile!.pub}`)
     );
+    if (myVideoElement) {
+      myVideoElement.hidden = !isCameraOn;
+    }
+    if (myAudioElement) {
+      myAudioElement.hidden = !isAudioOnly;
+    }
 
     startcall();
   });

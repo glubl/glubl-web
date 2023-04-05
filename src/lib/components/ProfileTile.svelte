@@ -19,13 +19,16 @@
   callExpanded.subscribe((v) => (expanded = v));
   $: callExpanded.set(selectedMenu === ":calls:");
   $: stream = !!myProfile ? $localStream : $remoteStreamMap[profile.pub];
+  $: if (videoElement)
+    videoElement.hidden = !stream || stream?.getVideoTracks().length === 0;
+  $: if (audioElement)
+    audioElement.hidden = !stream || stream?.getAudioTracks().length === 0;
 </script>
 
 <div class="rounded-md flex flex-col items-center justify-center bg-base-200">
   <div class="flex flex-row justify-center items-center h-36 w-48">
     <video
       id="userVideo-{profile.pub}"
-      hidden={!stream}
       autoplay
       playsinline
       bind:this={videoElement}
@@ -34,7 +37,6 @@
     </video>
     <audio
       id="userAudio-{profile.pub}"
-      hidden={!stream}
       autoplay
       playsinline
       bind:this={audioElement}
