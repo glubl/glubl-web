@@ -4,7 +4,7 @@ import "gun/lib/then"
 import "gun/lib/radix"
 import "gun/lib/radisk"
 import "gun/lib/store"
-// import "./webrtc"
+import "./webrtc"
 import "./ntp"
 
 import { gunStore, localGunStore } from "../stores"
