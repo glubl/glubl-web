@@ -105,12 +105,14 @@ const auth = {
   },
 
   async logout() {
+    const gun = get(gunStore)
     
     // db.deinit()
     localStorage.clear()
     stores.clear()
     friends.deinit()
-
+    gun._.on('leave', gun._)
+    gun._.user?.leave()
     await goto("/login")
     
     await db.init()

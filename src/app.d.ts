@@ -85,7 +85,7 @@ declare global {
         ordered: boolean,
         maxRetransmits: number,
       },
-      rtcOpt?: {
+      offer?: {
         iceRestart?: boolean;
         offerToReceiveAudio?: boolean;
         offerToReceiveVideo?: boolean;
@@ -140,7 +140,9 @@ declare module "gun" {
     $: { _: _GunRoot };
   
     on(event: 'friend', data: GunHookFriend): void;
-    on(event: 'friend', callback: (friend: GunHookFriend) => void)
+    on(event: 'friend', callback: function(GunHookFriend): void)
+    on(event: 'leave', data: _GunRoot): void
+    on(event: 'leave', callback: function(): void): void
   }
   
 }
