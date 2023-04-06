@@ -1,16 +1,15 @@
 <script lang="ts">
-  import { Svrollbar } from "$lib/components/svrollbar";
   import { Icon } from "@steeze-ui/svelte-icon";
   import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { screenStore, friendsStore, menuOpen, profileStore } from "../stores";
+  import { menuOpen, profileStore } from "../stores";
   import { getGun } from "../db";
-  import type { GunHookMessagePut, IGunChain, IGunInstance, IGunOnEvent } from "gun";
+  import type { IGunChain, IGunOnEvent } from "gun";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
-  import auth from "../auth";
   import { get, type Unsubscriber } from "svelte/store";
   import * as _ from "lodash";
+  import { getUserSpacePath } from "../utils";
 
   function onMenuClick() {
     menuOpen.update(v => true)
@@ -59,7 +58,7 @@
       throw new SharedCreationFail()
     shared = _
 
-    mySpacePath = await auth.getUserSpacePath(pair.pub, shared)
+    mySpacePath = await getUserSpacePath(pair.pub, shared)
     mySpace = gun.get("~"+friend.pub)
       .get("spaces")
       .get(mySpacePath)
@@ -69,7 +68,7 @@
       } else { console.warn("Somehow your profile is undefined???") }
     })
 
-    theirSpacePath = await auth.getUserSpacePath(friend.pub, shared)
+    theirSpacePath = await getUserSpacePath(friend.pub, shared)
     theirSpace = user
       .get("spaces")
       .get(theirSpacePath)
@@ -170,7 +169,7 @@
   <!-- Causes slow when unload -->
   <!-- <VirtualList items={chats} let:item={chat}> -->
   <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-16 pb-2">
-    <div bind:this={contents} id="contents" class="flex h-fit flex-col-reverse">
+    <div bind:this={contents} id="contents" class="flex h-fit w-full flex-col-reverse">
       {#each chats??[] as chat}
          <!-- content here -->
         {#if 
@@ -184,10 +183,8 @@
             >
               {dayjs.unix(chat.ts / 1000).format("hh:mm A")}
             </div>
-            <div class="flex flex-row items-start gap-x-2">
-              <div class="flex flex-col">
-                {chat.msg}
-              </div>
+            <div class="w-full min-w-0 inline-block break-words">
+              {chat.msg}
             </div>
           </div>
         {:else}
@@ -206,7 +203,7 @@
                   <Icon src={User} theme="solid" class="color-gray-900" />  
                 {/if}
               </div>
-              <div class="flex flex-col">
+              <div class="w-full min-w-0 inline-block break-words">
                 <div class="flex flex-row gap-x-2 items-start">
                   <p class="font-semibold text-accent-content/80">
                     {chat.by.username}
@@ -215,7 +212,7 @@
                     {dayjs.unix(chat.ts / 1000).format("DD/MM/YYYY hh:mm A")}
                   </p>
                 </div>
-                {chat.msg}
+                  {chat.msg}
               </div>
             </div>
           </div>
