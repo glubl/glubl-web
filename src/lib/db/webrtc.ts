@@ -43,16 +43,15 @@ function init(this: IGunHookContext<_GunRoot>, root: _GunRoot) {
 
   initOpt(opt)
   
-  
   let gun = root.$ as IGunInstance<any>
   root.on("friend", function(this: IGunHookContext<GunHookFriend>, friend: GunHookFriend) {
+    this.to.next(friend)
     initFriend.apply(this, [friend, opt, gun])
   })
 }
 
 async function initFriend(this: IGunHookContext<GunHookFriend>, friend: GunHookFriend, opt: GunOptions, gun: IGunInstance<any>) {
   // console.log("friend ", friend)
-  this.to.next(friend)
   let mesh = (opt.mesh = opt.mesh || Gun.Mesh(gun._))
   let user = gun._.user!
   let root = gun._
