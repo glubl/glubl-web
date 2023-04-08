@@ -1,16 +1,17 @@
-import type { GunSchema, IGunChain, IGunInstanceRoot, ISEA, ISEAPair } from "gun"
-import { DecriptionFail, HashFail, InvalidPairError, ProfileNotSet } from "./errors"
+import type { ISEAPair } from "gun"
+import { HashFail, InvalidPairError } from "./errors"
 import { goto } from "$app/navigation"
-import { clear, gunStore } from "./stores"
+import { gunStore } from "./stores"
 import { get } from "svelte/store"
-import { getGun } from "./gun"
-import { SEA } from "gun"
+import { getGun } from "./db"
+import SEA from "gun/sea"
 
 import * as stores from "./stores"
-import * as db from "./gun"
+import * as db from "./db"
 import * as friends from "./friends"
 
 import { uniqueNamesGenerator, adjectives, colors, animals, type Config } from 'unique-names-generator';
+import { getUserSpacePath } from "./utils"
 const randNameConfig: Config = {
   dictionaries: [adjectives, colors, animals],
   separator: ' ',
@@ -47,7 +48,7 @@ const auth = {
       const myProfile = await this.getProfile()
       stores.profileStore.set({
         ...myProfile,
-        space: await this.getUserSpacePath(keyPair.pub, keyPair.epriv)
+        space: await getUserSpacePath(keyPair.pub, keyPair.epriv)
       })
 
       await friends.init()
@@ -79,7 +80,7 @@ const auth = {
       epub: pair.epub
     }
     const userProfileEnc = await SEA.encrypt(userProfile, pair)
-    const mySpacePath = await this.getUserSpacePath(pair.pub, pair.epriv)
+    const mySpacePath = await getUserSpacePath(pair.pub, pair.epriv)
 
     const profileWithSPace = {
       ...userProfile,
@@ -103,12 +104,14 @@ const auth = {
   },
 
   async logout() {
+    const gun = get(gunStore)
     
     // db.deinit()
     localStorage.clear()
     stores.clear()
     friends.deinit()
-
+    gun._.on('leave', gun._)
+    gun._.user?.leave()
     await goto("/login")
     
     await db.init()
@@ -148,25 +151,14 @@ const auth = {
     return profile
   },
 
-  createDefaultProfile() {
+  createDefaultProfile(): Profile {
     let {pair} = getGun()
     return {
       pub: pair.pub, 
       epub: pair.epub, 
       picture: "",
       username: uniqueNamesGenerator({...randNameConfig, seed: pair.pub}).toTitleCase()
-    } as Profile
-  },
-
-  async getUserSpacePath(path: string, salt: string) {
-    const {SEA} = getGun()
-  
-    const pathHash1 = await SEA.work(path, null, null, {encode: "utf8", salt: salt || ""})
-    const pathHash2 = await SEA.work(pathHash1, null, null, {name: "SHA-256"})
-
-    if (!pathHash2)
-      throw new HashFail()
-    return pathHash2
+    }
   },
 
   // TODO: Use shared pair instead
@@ -174,7 +166,7 @@ const auth = {
     const {SEA, user, pair} = getGun()
   
     const profile = await auth.getProfile()
-    const sharedPath = await auth.getUserSpacePath(theirPub, sharedKey)
+    const sharedPath = await getUserSpacePath(theirPub, sharedKey)
     user.get("spaces")
       .get(sharedPath)
       .put({

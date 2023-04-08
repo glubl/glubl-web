@@ -1,7 +1,7 @@
 <script lang="ts">
   import auth, { canAuthenticate } from "@src/lib/auth";
   import { onMount } from "svelte";
-  import * as db from "@src/lib/gun";
+  import * as db from "@src/lib/db";
   import * as friends from "@src/lib/friends";
   import "../style.css";
   import { goto, invalidate } from "$app/navigation";
@@ -10,14 +10,14 @@
 
   $: loaded = false;
 
-  urlStore.subscribe((u) => {
-    if (
-      !canAuthenticate() &&
-      !(u.pathname.startsWith("/login") || u.pathname.startsWith("/register"))
-    )
-      goto("/login");
-    else if (u.pathname == "/") goto("/app");
-  });
+  urlStore.subscribe(u => {
+    if (!u) return
+    if (!canAuthenticate() && 
+      !(u.pathname.startsWith("/login") || u.pathname.startsWith("/register")))
+      goto("/login")
+    else if (u.pathname == "/")
+      goto("/app")
+  })
   onMount(async () => {
     window.onunhandledrejection = async (e) => {
       console.log("we got exception, but the app has crashed", e);
