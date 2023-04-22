@@ -9,7 +9,7 @@
   import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
   import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { menuOpen, profileStore, screenStore } from "../stores";
+  import { menuOpen, myProfileStore, screenStore } from "../stores";
   import { getGun } from "../db";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
   import { get, type Unsubscriber } from "svelte/store";
@@ -67,7 +67,7 @@
     mySpace = gun.get("~"+friend.pub)
       .get("spaces")
       .get(mySpacePath);
-    profileUnsub = profileStore.subscribe((v) => {
+    profileUnsub = myProfileStore.subscribe((v) => {
       if (v) {
         profilePathMap[mySpacePath] = { ...v, space: mySpacePath };
       } else {
@@ -134,7 +134,7 @@
     if (!data) throw new DecriptionFail();
 
     data.by = profile;
-    data.to = get(profileStore);
+    data.to = get(myProfileStore);
 
     chatData[k] = data;
     refreshChat();

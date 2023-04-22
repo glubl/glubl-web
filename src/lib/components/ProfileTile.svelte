@@ -2,27 +2,34 @@
   import { Icon } from "@steeze-ui/svelte-icon";
   import { User } from "@steeze-ui/heroicons";
   import {
-    screenStore,
-    callExpanded,
-    localStream,
-    remoteStreamMap,
+    localStreams,
+    myProfileStore
   } from "../stores";
+  import { get } from "svelte/store";
+  import type { MediaController } from "../call";
 
   export let profile: FriendProfile;
-  export let myProfile: FriendProfile | null = null;
-  let expanded: boolean;
-  let selectedMenu: string;
-  let videoElement: HTMLMediaElement | null;
-  let audioElement: HTMLMediaElement | null;
 
-  screenStore.selectedChatMenu.subscribe((v) => (selectedMenu = v));
-  callExpanded.subscribe((v) => (expanded = v));
-  $: callExpanded.set(selectedMenu === ":calls:");
-  $: stream = !!myProfile ? $localStream : $remoteStreamMap[profile.pub];
-  $: if (videoElement)
-    videoElement.hidden = !stream || stream?.getVideoTracks().length === 0;
-  $: if (audioElement)
-    audioElement.hidden = !stream || stream?.getAudioTracks().length === 0;
+  let myProfile: FriendProfile | undefined
+  $: myProfile = $myProfileStore
+  myProfileStore.subscribe((p) => myProfile = p)
+
+  let controller = profile.pub === myProfile?.pub ? get(localStreams.call) : undefined
+  let videoMuted: boolean = controller?.isVideoMuted || true
+  let audioMuted: boolean = controller?.isAudioMuted || true
+  if (controller) controller
+    .on("userMedia", (m) => stream = m)
+    .on("videoMute", (m) => videoMuted = m)
+    .on("audioMute", (m) => audioMuted = m)
+  
+  let stream = controller?.userMedia
+
+  let videoElement: HTMLMediaElement
+  $: if(videoElement && profile.pub === myProfile?.pub) videoElement.srcObject = stream ? stream : null
+  // $: if (videoElement)
+  //   videoElement.hidden = !stream || stream?.getVideoTracks().length === 0;
+  // $: if (audioElement)
+  //   audioElement.hidden = !stream || stream?.getAudioTracks().length === 0;
 </script>
 
 <div class="rounded-md flex flex-col items-center justify-center bg-base-200">
@@ -32,34 +39,32 @@
       autoplay
       playsinline
       bind:this={videoElement}
+      hidden={videoMuted}
     >
       <track kind="captions" />
     </video>
-    <audio
+   
+    <!-- <audio
       id="userAudio-{profile.pub}"
       autoplay
       playsinline
       bind:this={audioElement}
-    />
-    {#key videoElement && videoElement.hidden}
+    /> -->
+    {#if videoMuted}
       {#if profile.picture.length !== 0}
         <img
-          class="{expanded
-            ? 'md:w-28 w-14'
-            : 'w-14'} object-cover mask mask-circle"
+          class="w-14 object-cover mask mask-circle"
           src={profile.picture}
           alt="{profile.username} profile picture"
         />
       {:else}
         <div
-          class="{expanded
-            ? 'md:w-28 w-14'
-            : 'w-14'} mask mask-circle bg-base-100"
+          class="w-14 mask mask-circle bg-base-100"
         >
           <Icon src={User} alt="{profile.username} no profile picture" />
         </div>
       {/if}
-    {/key}
+    {/if}
   </div>
   <strong class="prose relative bottom-2">{profile.username}</strong>
 </div>

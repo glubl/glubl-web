@@ -5,7 +5,7 @@
       "type": "firefox",
       "request": "launch",
       "name": "Launch Firefox against localhost",
-      "url": "http://localhost:5000",
+      "url": "http://localhost:5005",
       "webRoot": "${workspaceFolder}/src",
     }
   ]

@@ -5,7 +5,6 @@
   import AddFriend from "./AddFriend.svelte";
   import ChatScreen from "./ChatScreen.svelte";
   import CallScreen from "./CallScreen.svelte";
-  import auth from "../auth";
 
   let selectedMenu: string;
   let friends: { [pub: string]: FriendProfile } = {};

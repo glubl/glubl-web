@@ -4,8 +4,10 @@ import "gun/lib/then"
 import "gun/lib/radix"
 import "gun/lib/radisk"
 import "gun/lib/store"
-import "./webrtc"
 import "./ntp"
+import "./webrtc"
+import "./webrtcFriend"
+import "./tunnel"
 
 import { gunStore, localGunStore } from "../stores"
 import type { ISEAPair } from "gun"
@@ -37,12 +39,14 @@ export async function init() {
     get: localStorage.getItem
   }
 
+  const localGun = Gun(localOpt)
+  localGunStore.set(localGun)
+
   const gun = Gun(opt)
   window.gun = gun;
   gunStore.set(gun)
 
-  const localGun = Gun(localOpt)
-  localGunStore.set(localGun)
+  
 }
 
 export function deinit() {

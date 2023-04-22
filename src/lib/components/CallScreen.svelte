@@ -2,37 +2,50 @@
   import { Icon } from "@steeze-ui/svelte-icon";
   import {
     Phone,
+    PhoneMissed,
+    PhoneCall,
     Mic,
     MicOff,
     Video,
     VideoOff,
   } from "@steeze-ui/feather-icons";
   import {
-    profileStore,
-    localStream as localStreamStore,
+    myProfileStore,
+    localStreams,
     screenStore,
     callExpanded,
   } from "@src/lib/stores";
   import callProfiles from "../mock/profiles";
   import ProfileTile from "./ProfileTile.svelte";
   import NavButton from "./NavButton.svelte";
-  import call from "@src/lib/call";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
 
-  let myProfile = $profileStore;
+  let myProfile = $myProfileStore;
   let calleeProfiles: { [pub: string]: FriendProfile } = callProfiles;
 
-  let isCameraOn: boolean = true;
+  let controller = get(localStreams.call)
+  
+  let isCameraOn: boolean = false;
+  $: controller.on("videoMute", (m) => isCameraOn = !m)
   let isMicOn: boolean = false;
-  let isAudioOnly: boolean;
+  $: controller.on("audioMute", (m) => isMicOn = !m)
+  let isOngoing: boolean = controller.isOnGoing
+  $: controller.on("start", () => isOngoing = true)
+  $: controller.on("stop", () => isOngoing = false)
+  $: controller.on("data",  (b) => console.log(b))
+  $: controller.on("startRecorder", () => console.log("start recorder"))
+  $: controller.on("stopRecorder", () => console.log("stop recorder"))
+  $: controller.on("recorder", (r) => console.log(r))
+
+  // let isAudioOnly: boolean;
   let fullScreen: boolean;
   let selectedMenu: string;
   let profileShow: number;
 
   let myVideoElement: HTMLMediaElement | null;
   let myAudioElement: HTMLMediaElement | null;
-  let selectedDeviceLabels: Set<string> = new Set();
+  // let selectedDeviceLabels: Set<string> = new Set();
 
   screenStore.selectedChatMenu.subscribe((v) => (selectedMenu = v));
   callExpanded.subscribe((v) => {
@@ -40,79 +53,79 @@
     profileShow = v ? 8 : 4;
   });
 
-  function startcall() {
-    call.startCapture({
-      audio: isMicOn,
-      video: isCameraOn,
-    } as MediaStreamConstraints);
-    const stream = get(localStreamStore);
+  // function startcall() {
+  //   call.startCapture({
+  //     audio: isMicOn,
+  //     video: isCameraOn,
+  //   } as MediaStreamConstraints);
+  //   const stream = get(localStreamStore);
 
-    navigator.mediaDevices.ondevicechange = (ev) => {
-      updateElement();
-      if (stream) {
-        stream.getTracks().forEach((track) => {
-          if (!!track) selectedDeviceLabels.add(track.label);
-        });
-      }
-    };
-  }
-  function endcall() {
-    call.endCapture(myProfile?.pub);
-    isCameraOn = false;
-    isMicOn = false;
-    updateElement();
-    // clear all media stream
-  }
-  function toggleCamera() {
-    isCameraOn = !isCameraOn;
-    isAudioOnly = isMicOn && !isCameraOn;
-    updateElement();
-  }
-  function toggleMic() {
-    isMicOn = !isMicOn;
-    isAudioOnly = isMicOn && !isCameraOn;
-    updateElement();
-  }
+  //   navigator.mediaDevices.ondevicechange = (ev) => {
+  //     updateElement();
+  //     if (stream) {
+  //       stream.getTracks().forEach((track) => {
+  //         if (!!track) selectedDeviceLabels.add(track.label);
+  //       });
+  //     }
+  //   };
+  // }
+  // function endcall() {
+  //   call.endCapture(myProfile?.pub);
+  //   isCameraOn = false;
+  //   isMicOn = false;
+  //   updateElement();
+  //   // clear all media stream
+  // }
+  // function toggleCamera() {
+    // isCameraOn = !isCameraOn;
+    // isAudioOnly = isMicOn && !isCameraOn;
+    // updateElement();
+  // }
+  // function toggleMic() {
+    // isMicOn = !isMicOn;
+    // isAudioOnly = isMicOn && !isCameraOn;
+    // updateElement();
+  // }
 
-  function updateElement() {
-    call.updateCapture({
-      audio: isMicOn,
-      video: isCameraOn,
-    } as MediaStreamConstraints);
-  }
+  // function updateElement() {
+  //   call.updateCapture({
+  //     audio: isMicOn,
+  //     video: isCameraOn,
+  //   } as MediaStreamConstraints);
+  // }
 
   $: callExpanded.set(selectedMenu === ":calls:");
-  $: myAudioElement;
-  $: myVideoElement;
-  $: $localStreamStore;
+  // $: myAudioElement;
+  // $: myVideoElement;
+  // $: $localStreamStore;
   // $: console.log($localStreamStore?.getTracks());
-  $: if (myVideoElement) {
-    // console.log("video hidden", !isAudioOnly);
-    localStreamStore.subscribe((v) => (myVideoElement!.srcObject = v));
-    myVideoElement.hidden = !isCameraOn;
-  }
-  $: if (myAudioElement) {
-    // console.log("audio hidden", !isAudioOnly);
-    localStreamStore.subscribe((v) => (myAudioElement!.srcObject = v));
-    myAudioElement.hidden = !isAudioOnly;
-  }
+  // $: if (myVideoElement) {
+  //   // console.log("video hidden", !isAudioOnly);
+  //   localStreamStore.subscribe((v) => (myVideoElement!.srcObject = v));
+  //   myVideoElement.hidden = !isCameraOn;
+  // }
+  // $: if (myAudioElement) {
+  //   // console.log("audio hidden", !isAudioOnly);
+  //   localStreamStore.subscribe((v) => (myAudioElement!.srcObject = v));
+  //   myAudioElement.hidden = !isAudioOnly;
+  // }
 
-  onMount(() => {
-    myVideoElement = <HTMLMediaElement | null>(
-      document.getElementById(`userVideo-${myProfile!.pub}`)
-    );
-    myAudioElement = <HTMLMediaElement | null>(
-      document.getElementById(`userAudio-${myProfile!.pub}`)
-    );
-    if (myVideoElement) {
-      myVideoElement.hidden = !isCameraOn;
-    }
-    if (myAudioElement) {
-      myAudioElement.hidden = !isAudioOnly;
-    }
+  // onMount(() => {
+  //   myVideoElement = <HTMLMediaElement | null>(
+  //     document.getElementById(`userVideo-${myProfile!.pub}`)
+  //   );
+  //   myAudioElement = <HTMLMediaElement | null>(
+  //     document.getElementById(`userAudio-${myProfile!.pub}`)
+  //   );
+  //   if (myVideoElement) {
+  //     myVideoElement.hidden = !isCameraOn;
+  //   }
+  //   if (myAudioElement) {
+  //     myAudioElement.hidden = !isAudioOnly;
+  //   }
 
-    startcall();
-  });
+  //   startcall();
+  // });
 </script>
 
 <div
@@ -136,7 +149,7 @@
       : 'flex flex-row h-full w-full space-x-2 overflow-x-auto'}"
   >
     {#if myProfile}
-      <ProfileTile profile={myProfile} {myProfile} />
+      <ProfileTile profile={myProfile} />
     {/if}
     {#each Object.entries(calleeProfiles).slice(0, profileShow) as [key, profile]}
       <ProfileTile {profile} />
@@ -157,20 +170,27 @@
   <!-- Buttons -->
   <div
     class="flex flex-row space-x-4 justify-center {fullScreen
-      ? 'pb-8 pt-2 sticky bottom-0 rounded-t-2xl bg-base-200'
+      ? 'py-4 md:py-8 sticky bottom-0 rounded-t-2xl bg-base-200'
       : 'rounded-2xl'}"
   >
-    <button class="btn btn-error btn-circle p-3" on:click={endcall}
-      ><Icon src={Phone} theme="solid" /></button
-    >
+    {#if isOngoing}
+       <!-- content here -->
+       <button class="btn btn-error btn-circle p-3" on:click={() => controller.stop()}
+         ><Icon src={PhoneMissed} theme="solid" /></button
+       >
+    {:else}
+      <button class="btn btn-accent btn-circle p-3" on:click={() => controller.start()}
+        ><Icon src={PhoneCall} theme="solid" /></button
+      >
+    {/if}
     <button
       class="btn {isMicOn ? 'btn-accent' : 'btn-error'} btn-circle p-3"
-      on:click={toggleMic}
+      on:click={() => controller.toggleAudio()}
       ><Icon src={isMicOn ? Mic : MicOff} theme="solid" /></button
     >
     <button
       class="btn {isCameraOn ? 'btn-accent' : 'btn-error'} btn-circle p-3"
-      on:click={toggleCamera}
+      on:click={() => controller.toggleVideo()}
       ><Icon src={isCameraOn ? Video : VideoOff} theme="solid" /></button
     >
   </div>

@@ -7,7 +7,7 @@
   import { writable } from "svelte/store";
   import { addFriend, parseFriendRequest, sendFriendRequest } from "../friends";
   import { getGun } from "../db";
-  import { friendsStore, menuOpen, profileStore } from "../stores";
+  import { friendsStore, menuOpen, myProfileStore } from "../stores";
 
   function onMenuClick() {
     menuOpen.update(v => !v)

@@ -46,10 +46,11 @@ const auth = {
        
       // gunStore.set(gun)
       const myProfile = await this.getProfile()
-      stores.profileStore.set({
+      stores.myProfileStore.set({
         ...myProfile,
-        space: await getUserSpacePath(keyPair.pub, keyPair.epriv)
+        space: await getUserSpacePath(myProfile.pub, keyPair.epriv)
       })
+      this.listenProfile()
 
       await friends.init()
 
@@ -86,7 +87,7 @@ const auth = {
       ...userProfile,
       space: mySpacePath
     }
-    stores.profileStore.set(profileWithSPace)
+    stores.myProfileStore.set(profileWithSPace)
     
     // encrypted
     gun.user()
@@ -132,9 +133,8 @@ const auth = {
     if (msg !== msg2) throw err
   },
 
-  async getProfile(): Promise<Profile> {
+  async parseProfile(profileEnc: string | Profile) {
     let {SEA, user, pair} = getGun()
-    const profileEnc: string | Profile = await user.get("profile").then()
     let profile: Profile | undefined
     if (profileEnc && (profileEnc as Profile).pub) {
       console.warn("Profile is not encrypted, encrypting...")
@@ -151,14 +151,32 @@ const auth = {
     return profile
   },
 
+  async getProfile(): Promise<Profile> {
+    let {user} = getGun()
+    const profileEnc: string | Profile = await user.get("profile").then()
+    return await this.parseProfile(profileEnc)
+  },
+
+  listenProfile() {
+    let {user, pair} = getGun()
+    user.get("profile").on(async (p: string | Profile) => {
+      let profile = await this.parseProfile(p)
+      stores.myProfileStore.set({
+        ...profile,
+        space: await getUserSpacePath(pair.pub, pair.epriv)
+      })
+    })
+  },
+
+  defaultProfiles: <{[pub: string]: Profile}>{},
   createDefaultProfile(): Profile {
     let {pair} = getGun()
-    return {
+    return (this.defaultProfiles[pair.pub] ??= {
       pub: pair.pub, 
       epub: pair.epub, 
       picture: "",
       username: uniqueNamesGenerator({...randNameConfig, seed: pair.pub}).toTitleCase()
-    }
+    })
   },
 
   // TODO: Use shared pair instead

@@ -1,5 +1,6 @@
 import type { IGunInstance } from "gun"
-import { writable } from "svelte/store"
+import { readable, writable, type Readable, type Writable } from "svelte/store"
+import { MediaController } from "./call"
 
 export const screenStore = {
   selectedChatMenu: writable<string>(),
@@ -7,16 +8,21 @@ export const screenStore = {
   currentActiveCall: writable<boolean>(true)
 }
 
-export const localStream = writable<MediaStream | null>(null)
-export const remoteStreamMap = writable<{[pub: string] : MediaStream | null}>({})
-export const deviceLabels = writable<string[]>([]);
+export let localStreams: {[key: string]: Readable<MediaController>} = {
+  call: readable(new MediaController())
+}
+export let remoteStreams: {[key: string]: Readable<MediaController>} = {}
+
+// export const localStream = writable<MediaStream | null>(null)
+// export const remoteStreamMap = writable<{[pub: string] : MediaStream | null}>({})
+// export const deviceLabels = writable<string[]>([]);
 
 export const menuOpen = writable(false)
 export const callExpanded = writable(false)
 export const gunStore = writable<IGunInstance<any>>()
 export const localGunStore = writable<IGunInstance<any>>()
 export const friendsStore = writable<{[pub: string]: FriendProfile}>({})
-export const profileStore = writable<FriendProfile | undefined>()
+export const myProfileStore = writable<FriendProfile | undefined>()
 export const callFriendStore = writable<{[pub: string]: FriendProfile}>({})
 
 export function clear() {
@@ -25,5 +31,5 @@ export function clear() {
   screenStore.currentActiveCall.set(false)
   menuOpen.set(false)
   friendsStore.set({})
-  profileStore.set(undefined)
+  myProfileStore.set(undefined)
 }

@@ -169,11 +169,24 @@ export const sendFriendRequest = async (pairPub: {pub: string, epub: string}) =>
 
   const now = dayjs()
   const key = `${pairPub.pub}|${now.format("YYYY-MM-DD")}#${hash}`
-  gun.get("#fren-req")
-    .get(key)
-    .put(data64)  
+
+  return new Promise<void>((res, rej) => {
+    addFriend(pairPub)
+      .then(() => {
+        let defer = setTimeout(() => rej("timeout"), 30 * 1000)
+        gun.get("#fren-req")
+          .get(key)
+          .put(data64, (ack) => {
+            if ("err" in ack) rej(ack.err)
+            else {
+              clearTimeout(defer)
+              res()
+            }
+          })  
+      })
+      .catch((rea) => rej(rea))
+  })
   
-  await addFriend(pairPub)
 }
 
 
@@ -228,8 +241,18 @@ export const addFriend = async (pairPub: {pub: string, epub: string}) => {
     ...pairPub,
     space: sharedSpace
   }, pair)
-  user.get("friends")
-    .get(friendPath)
-    .put(pairPubEnc)
+
+  return new Promise<void>((res, rej) => {
+    let defer = setTimeout(rej, 30 * 1000)
+    user.get("friends")
+      .get(friendPath)
+      .put(pairPubEnc, (ack) => {
+        if ("err" in ack) rej(ack.err)
+        else {
+          clearTimeout(defer)
+          res()
+        }
+      })
+  })
 }
 
