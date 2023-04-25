@@ -113,9 +113,9 @@ const auth = {
     friends.deinit()
     gun._.on('leave', gun._)
     gun._.user?.leave()
-    await goto("/login")
+    location.assign("/login")
     
-    await db.init()
+    // await db.init()
     // todo more cleanup if necessary
   },
 

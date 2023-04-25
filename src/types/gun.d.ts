@@ -1,5 +1,5 @@
 import * as g from "gun/types/gun"
-import type { GunRTC } from "../lib/db/webrtc"
+import type { GunRTC } from "../lib/webrtcSignal"
 import type { Tunnel, TunnelConnection, Path } from "@src/lib/db/tunnel"
 
 declare module "gun" {
@@ -18,6 +18,14 @@ declare module "gun" {
     },
     peers: { [pid: string]: gun.GunPeer }
   ) => void
+
+  export interface _GunRoot {
+    $: IGunInstance<any>
+    opt: GunOptions
+    user?: IGunUserInstance
+    once?: any
+    ask(callback?: (ack: g.GunMessagePut) => void): string
+  }
   
   export type GunOptions = Partial<{
     /** Undocumented but mentioned. Write data to a JSON. */
@@ -61,22 +69,13 @@ declare module "gun" {
     RTCPeerConnection?: typeof RTCPeerConnection | boolean
     RTCSessionDescription?: typeof RTCSessionDescription
     RTCIceCandidate?: typeof RTCIceCandidate
-    rtc?: RTCConfiguration & {
+    rtc?: {
       max?: number,
       room?: string,
-      dataChannel?: RTCDataChannelInit & {
-        ordered: boolean,
-        maxRetransmits: number,
-      },
-      offer?: {
-        iceRestart?: boolean;
-        offerToReceiveAudio?: boolean;
-        offerToReceiveVideo?: boolean;
-      },
-      announce?: {
-        interval?: number
-        retry?: number
-      }
+
+      peerConfig?: RTCConfiguration
+      dataChannel?: RTCDataChannelInit 
+      offer?: RTCOfferOptions
     }
 
     Tunnel?: false | {
@@ -85,17 +84,10 @@ declare module "gun" {
       startHc?: number
       maxRetry?: number
     }
-  }>  &  {
     peers: { [pid: string]: GunPeer }
-  }
+  }>
   
-  export interface _GunRoot {
-    $: IGunInstance<any>
-    opt: GunOptions
-    user?: IGunUserInstance
-    once?: any
-    ask(callback?: (ack: g.GunMessagePut) => void): string
-  }
+  
 
   export interface GunMesh {
     hi(peer: GunPeer & RTCPeerConnection): unknown;

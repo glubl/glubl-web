@@ -1,5 +1,9 @@
 import { EventEmitter } from "events"
 import Gun, { type GunOptions, type GunPeer as GP, type IGunHookContext, type IGunInstance, type _GunRoot, type GunMesh, type IGun, type IGunOnEvent } from "gun"
+import { random } from "lodash"
+
+const LOG = (...arg: any[]) => console.log("<Tunnel>", ...arg)
+const ERR = (...arg: any[]) => console.error("<Tunnel>", ...arg)
 
 Gun.on('opt', function(this: IGunHookContext<_GunRoot>, root: _GunRoot) {
     let opt = root.opt as GunOptions
@@ -30,6 +34,7 @@ export class Tunnel extends EventEmitter<TunnelEvent> {
             if (connect)
                 setTimeout(() => p.connect(), 1)
         })
+        
     }
 
     create(path: string | Path) {
@@ -56,14 +61,18 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
         this.path = path
         this.gun = gun
         this.id = path.id || ((gun as any).back("opt.uuid") || String.random)()
+        let ins = this
+        gun._.on("leave", function(root) {
+            ins.disconnect()
+        })
     }
 
     get isConnected() { return !!this.event }
 
     connect() {
-        this.startTime = +new Date()
         this.listen()
-        setTimeout(() => this.announce(), 1000)
+        this.startTime = +new Date()
+        setTimeout(() => this.announce(), 50)
     }
     disconnect() {
         if (this.event) {
@@ -92,21 +101,22 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
 
     private putSoul?: string
     private announce() {
-        // console.log("announce", this.path.announce)
+        LOG("{{announce}}")
         this.gun.get(this.path.announce)
             .get("id")
             .put(
-                "", 
-                (ack) => {
+                this.id, 
+                (ack: {
+                    err?: string;
+                    ok?: { '': 1 };
+                }) => {
                     if (
                         !ack 
-                        || 'err' in ack 
+                        || !!ack.err
                         || !ack.ok 
                         || !(ack.ok as any).id 
                         || (ack.ok as any).id === this.id
                     ) return
-
-                    // console.log("===> 2")
 
                     let id = (ack.ok as any).id
                     var peer = this.peers[id]
@@ -120,31 +130,33 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
                             console.error(error)
                         }
                     })
-                    peer.sendRaw({
+                    let raw = {
                         s: soul,
                         id: this.id
-                    }, soul)
+                    }
+                    LOG("== 2 == Got soul, sending soul")
+                    peer.sendRaw(raw, soul)
                 },
                 { acks: 20 } as any
             )
     }
 
     private listen() {
-        // console.log("listen", this.path.listen)
-        this.gun.get(this.path.listen).get("id").on(async (__, _, meta, event) => {
-            // console.log("listen-meta", meta, meta.put['>'] < this.startTime, !value, value === this.id, value in this.peers)
+        console.log("listen", this.path.listen)
+        this.gun.get(this.path.listen).get("id").on(async (v, _, meta, event) => {
             this.event = event
-            if (meta.put['>'] < this.startTime) return
+            if (meta.put['>'] < this.startTime || v === this.id) return
 
-            // console.log("===> 1")
+            LOG("== 1 == Got signal, sending soul...")
 
             // Temporary callback to wait soul from the other side
             var callback = (ack: any) => {
-                // console.log("===> 3")
-                if (!ack || 'err' in ack || !ack.ok) return
+                LOG("== 3 == Got soul, initializing...")
+                if (!ack || !!ack.err || !ack.ok) return
                 let msg = ack.ok as PeerRawMessage
-                var peer: TunnelPeer | undefined
                 if (msg.s && msg.id) {
+                    let peer = this.peers[msg.id]
+                    if (peer) return
                     peer = this.createPeer(msg.id, msg.s)
                     callback = (ack: any) => {
                         try {

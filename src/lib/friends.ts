@@ -177,7 +177,7 @@ export const sendFriendRequest = async (pairPub: {pub: string, epub: string}) =>
         gun.get("#fren-req")
           .get(key)
           .put(data64, (ack) => {
-            if ("err" in ack) rej(ack.err)
+            if ("err" in ack && !!ack.err) rej(ack.err)
             else {
               clearTimeout(defer)
               res()
@@ -247,7 +247,7 @@ export const addFriend = async (pairPub: {pub: string, epub: string}) => {
     user.get("friends")
       .get(friendPath)
       .put(pairPubEnc, (ack) => {
-        if ("err" in ack) rej(ack.err)
+        if ("err" in ack && !!ack.err) rej(ack.err)
         else {
           clearTimeout(defer)
           res()
