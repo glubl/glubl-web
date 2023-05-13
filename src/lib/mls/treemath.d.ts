@@ -1,0 +1,10 @@
+export declare function level(x: number): number;
+export declare function nodeWidth(n: number): number;
+export declare function root(n: number): number;
+export declare function left(x: number): number;
+export declare function right(x: number, n: number): number;
+export declare function parent(x: number, n: number): number;
+export declare function sibling(x: number, n: number): number;
+export declare function directPath(x: number, n: number): number[];
+export declare function copath(x: number, n: number): number[];
+export declare function commonAncestor(x: number, y: number): number;
