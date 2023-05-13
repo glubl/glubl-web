@@ -8,7 +8,7 @@
   import urlStore from "@src/lib/url";
   import { get, writable } from "svelte/store";
 
-  $: loaded = false
+  $: loaded = false;
 
   urlStore.subscribe(u => {
     if (!u) return
@@ -19,21 +19,24 @@
       goto("/app")
   })
   onMount(async () => {
-    window.onunhandledrejection = async(e) => {
-		  console.log('we got exception, but the app has crashed', e);
-      e.preventDefault()
-		}
+    window.onunhandledrejection = async (e) => {
+      console.log("we got exception, but the app has crashed", e);
+      e.preventDefault();
+    };
 
-    await db.init()
+    await db.init();
 
     if (canAuthenticate()) {
-      await auth.login(localStorage.getItem("key")!)
-    } else if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
-      await goto("/login", {invalidateAll: true})
+      await auth.login(localStorage.getItem("key")!);
+    } else if (
+      !window.location.pathname.startsWith("/login") &&
+      !window.location.pathname.startsWith("/register")
+    ) {
+      await goto("/login", { invalidateAll: true });
     }
 
-    loaded = true
-  })
+    loaded = true;
+  });
 </script>
 
 <div

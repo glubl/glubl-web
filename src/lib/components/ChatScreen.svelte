@@ -1,72 +1,79 @@
 <script lang="ts">
   import { Icon } from "@steeze-ui/svelte-icon";
+  import type {
+    GunHookMessagePut,
+    IGunChain,
+    IGunInstance,
+    IGunOnEvent,
+  } from "gun";
   import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
   import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { menuOpen, profileStore } from "../stores";
+  import { menuOpen, myProfileStore, screenStore } from "../stores";
   import { getGun } from "../db";
-  import type { IGunChain, IGunOnEvent } from "gun";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
   import { get, type Unsubscriber } from "svelte/store";
   import * as _ from "lodash";
+  import CallScreen from "./CallScreen.svelte";
+  import NavButton from "./NavButton.svelte";
   import { getUserSpacePath } from "../utils";
 
-  function onMenuClick() {
-    menuOpen.update(v => true)
-  }
+  export let friend: FriendProfile;
 
-  export let friend: FriendProfile
-  
-  const {gun, SEA, user, pair} = getGun()
-  const uuidFn: (l?: number) => string = (gun as any).back("opt.uuid") 
+  const { gun, SEA, user, pair } = getGun();
+  const uuidFn: (l?: number) => string = (gun as any).back("opt.uuid");
 
-  let shared: string
-  let mySpacePath: string
-  let mySpace: IGunChain<any>
-  let theirSpacePath: string
-  let theirSpace: IGunChain<any>
-  let myE: IGunOnEvent | null
-  let theirE: IGunOnEvent | null
-  let chats: (ChatMessage & {index: number})[]
-  let chatData: {[k: string]: ChatMessage} = {}
-  let profileUnsub: Unsubscriber | null
-  const refreshChat = _.debounce(() => {
-    chats = [
-      ...Object.values(chatData)
-        .sort((a, b) => b.ts - a.ts)
-        .map((v: any, i) => {
-          v.index = i;
-          return v;
-        }),
-    ];
-  }, 100, {maxWait: 500})
+  let shared: string;
+  let mySpacePath: string;
+  let mySpace: IGunChain<any>;
+  let theirSpacePath: string;
+  let theirSpace: IGunChain<any>;
+  let myE: IGunOnEvent | null;
+  let theirE: IGunOnEvent | null;
+  let chats: (ChatMessage & { index: number })[];
+  let chatData: { [k: string]: ChatMessage } = {};
+  let profileUnsub: Unsubscriber | null;
+  $: onCall = get(screenStore.currentActiveCall);
+  const refreshChat = _.debounce(
+    () => {
+      chats = [
+        ...Object.values(chatData)
+          .sort((a, b) => b.ts - a.ts)
+          .map((v: any, i) => {
+            v.index = i;
+            return v;
+          }),
+      ];
+    },
+    100,
+    { maxWait: 500 },
+  );
 
-  let profilePathMap: {[k: string]: FriendProfile} = {}
-  $: profilePathMap[theirSpacePath] = friend
+  let profilePathMap: { [k: string]: FriendProfile } = {};
+  $: profilePathMap[theirSpacePath] = friend;
 
   async function init(friend: FriendProfile) {
-
-    reset()
+    reset();
 
     if (!friend.pub)
-      throw new Error("Friend profile somehow doesn't have public key??")
-    if (!pair.pub)
-      throw new Error("Somehow you don't have public key????")
+      throw new Error("Friend profile somehow doesn't have public key??");
+    if (!pair.pub) throw new Error("Somehow you don't have public key????");
 
-    let _ = await SEA.secret(friend.epub, pair)
-    if (!_)
-      throw new SharedCreationFail()
-    shared = _
+    let _ = await SEA.secret(friend.epub, pair);
+    if (!_) throw new SharedCreationFail();
+    shared = _;
 
     mySpacePath = await getUserSpacePath(pair.pub, shared)
     mySpace = gun.get("~"+friend.pub)
       .get("spaces")
-      .get(mySpacePath)
-    profileUnsub = profileStore.subscribe(v => {
+      .get(mySpacePath);
+    profileUnsub = myProfileStore.subscribe((v) => {
       if (v) {
-        profilePathMap[mySpacePath] = {...v, space: mySpacePath}
-      } else { console.warn("Somehow your profile is undefined???") }
-    })
+        profilePathMap[mySpacePath] = { ...v, space: mySpacePath };
+      } else {
+        console.warn("Somehow your profile is undefined???");
+      }
+    });
 
     theirSpacePath = await getUserSpacePath(friend.pub, shared)
     theirSpace = user
@@ -77,97 +84,98 @@
       .get("messages")
       .map()
       .on((v, k, _, e) => {
-        receiveMessage(v, k)
-        theirE = e
-      })
+        receiveMessage(v, k);
+        theirE = e;
+      });
 
     mySpace
       .get("messages")
       .map()
       .on((v, k, _, e) => {
-        receiveMessage(v, k)
-        myE = e
-      })
+        receiveMessage(v, k);
+        myE = e;
+      });
   }
   $: {
-    if (friend)
-      init(friend)
+    if (friend) init(friend);
   }
 
   function reset() {
     if (myE) {
-      myE.off()
-      myE = null
+      myE.off();
+      myE = null;
     }
     if (theirE) {
-      theirE.off()
-      theirE = null
+      theirE.off();
+      theirE = null;
     }
-    chats = []
-    chatData = {}
+    chats = [];
+    chatData = {};
     if (profileUnsub) {
-      profileUnsub()
-      profileUnsub = null
+      profileUnsub();
+      profileUnsub = null;
     }
   }
 
   onDestroy(() => {
-    reset()
-  })
+    reset();
+  });
 
-  async function receiveMessage(v: {[k: string]: string}, k: string) {
-    delete v._
-    const path = k.substring(k.indexOf("|")+1)
-    const profile = profilePathMap[path]
+  async function receiveMessage(v: { [k: string]: string }, k: string) {
+    delete v._;
+    const path = k.substring(k.indexOf("|") + 1);
+    const profile = profilePathMap[path];
     if (!profile) {
-      throw new Error("Unknown chat sender")
+      throw new Error("Unknown chat sender");
     }
-    const enc = await SEA.verify(v.d, profile.pub)
-    if (!enc)
-      throw new VerifyFail()
-    const data = await SEA.decrypt(enc, shared)
-    if (!data)
-      throw new DecriptionFail()
-    
-    data.by = profile
-    data.to = get(profileStore)
+    const enc = await SEA.verify(v.d, profile.pub);
+    if (!enc) throw new VerifyFail();
+    const data = await SEA.decrypt(enc, shared);
+    if (!data) throw new DecriptionFail();
 
-    chatData[k] = data
-    refreshChat()
+    data.by = profile;
+    data.to = get(myProfileStore);
+
+    chatData[k] = data;
+    refreshChat();
   }
 
-  let messageInput: string
+  let messageInput: string;
   async function sendMessage() {
-    if (!messageInput) return
-    const time = new Date()
+    if (!messageInput) return;
+    const time = new Date();
     const msgData: ChatMessageGun = {
       msg: messageInput,
       ts: time.getTime(),
       by: pair.pub,
-      to: friend.pub
-    }
-    const msgDataEnc = await SEA.encrypt(msgData, shared)
-    const msgDataSig = await SEA.sign(msgDataEnc, pair)
-    theirSpace.get("messages")
+      to: friend.pub,
+    };
+    const msgDataEnc = await SEA.encrypt(msgData, shared);
+    const msgDataSig = await SEA.sign(msgDataEnc, pair);
+    theirSpace
+      .get("messages")
       .get(`${time.toISOString()}|${mySpacePath}`)
-      .put({d: msgDataSig})
+      .put({ d: msgDataSig });
 
-    messageInput = ""
+    messageInput = "";
   }
-  
+
   let viewport: Element;
   let contents: Element;
   $: viewport, contents;
-
 </script>
 
 <div
   id="chat-screen"
   class="flex flex-col h-screen justify-end flex-1 w-full relative"
 >
-
   <!-- Causes slow when unload -->
   <!-- <VirtualList items={chats} let:item={chat}> -->
+  {#if onCall}
+    <div id="call-section h-60 w-full overflow-y-hidden">
+      <CallScreen friend={friend} />
+    </div>
+  {/if}
   <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-16 pb-2">
     <div bind:this={contents} id="contents" class="flex h-fit w-full flex-col-reverse">
       {#each chats??[] as chat}
@@ -200,7 +208,7 @@
                     src={chat.by.picture}
                   />
                 {:else}
-                  <Icon src={User} theme="solid" class="color-gray-900" />  
+                  <Icon src={User} theme="solid" class="color-gray-900" />
                 {/if}
               </div>
               <div class="w-full min-w-0 inline-block break-words">
@@ -230,35 +238,33 @@
 
   <div
     id="header"
-    class="prose flex flex-row items-center h-14 w-[inherit] max-w-[inherit] py-4 px-2 backdrop-blur absolute shadow-lg top-0 bg-base-200/90"
+    class="prose flex flex-row items-center {get(screenStore.currentActiveCall)
+      ? 'top-60'
+      : 'top-0'} h-14 w-[inherit] max-w-[inherit] py-4 px-2 backdrop-blur absolute shadow-lg bg-base-200/90"
   >
-    <div
-      class="h-fit w-fit btn btn-outline btn-base btn-sm drawer-button lg:hidden p-2 !outline-none !border-none"
-      on:click={onMenuClick}
-      on:keypress
-    >
-      <Icon src={Bars3} theme="solid" class="color-gray-900 w-6 h-6" />
-    </div>
+    <NavButton />
     {#if friend.username}
-       <h4 class="m-0 ml-2"><strong>{friend.username}</strong></h4>
+      <h4 class="m-0 ml-2"><strong>{friend.username}</strong></h4>
     {/if}
-    <div class="w-2"></div>
-    <button on:click={() => navigator.clipboard.writeText(friend.pub)} class="min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5">
+    <div class="w-2" />
+    <button
+      on:click={() => navigator.clipboard.writeText(friend.pub)}
+      class="min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5"
+    >
       <code class="truncate max-w-fit">{friend.pub.slice(0, 48)}...</code>
     </button>
     <div class="flex-1" />
-    <button
-      class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
-      on:click={() => {
-        console.log("Calling... ", friend.pub);
-      }}
-    >
-      <Icon
-        src={Phone}
-        theme="solid"
-        class="w-5 h-5 color-gray-900"
-      />
-    </button>
+    {#if !onCall}
+      <button
+        class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
+        on:click={() => {
+          console.log(`Calling ${friend.username}...`);
+          screenStore.currentActiveCall.set(true);
+        }}
+      >
+        <Icon src={Phone} theme="solid" class="w-5 h-5 color-gray-900" />
+      </button>
+    {/if}
   </div>
 
   <!-- Input -->
@@ -268,14 +274,11 @@
       placeholder="Message"
       class="flex-1 input input-bordered rounded-tr-none rounded-br-none"
       bind:value={messageInput}
-      on:keydown={e => {
-        if (e.key == "Enter")
-          sendMessage()
+      on:keydown={(e) => {
+        if (e.key == "Enter") sendMessage();
       }}
     />
-    <button class="btn btn-accent p-3"
-      on:click|preventDefault={sendMessage}
-    >
+    <button class="btn btn-accent p-3" on:click|preventDefault={sendMessage}>
       <Icon
         src={PaperAirplane}
         theme="solid"
