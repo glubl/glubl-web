@@ -1,4 +1,4 @@
-import Gun, { type GunOptions, type GunPeer, type _GunRoot } from "gun";
+import Gun, { type GunOptions, type GunPeer, type _GunRoot, type GunMesh } from "gun";
 
 type NTP = {
   t1: number

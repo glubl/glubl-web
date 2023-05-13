@@ -1,6 +1,6 @@
 import type { IGunInstance } from "gun"
 import { readable, writable, type Readable, type Writable } from "svelte/store"
-import { MediaController } from "./call"
+import { CallController } from "./call"
 
 export const screenStore = {
   selectedChatMenu: writable<string>(),
@@ -8,10 +8,10 @@ export const screenStore = {
   currentActiveCall: writable<boolean>(true)
 }
 
-export let localStreams: {[key: string]: Readable<MediaController>} = {
-  call: readable(new MediaController())
+export let localStreams: {[key: string]: Readable<CallController>} = {
+  call: writable<CallController>(new CallController())
 }
-export let remoteStreams: {[key: string]: Readable<MediaController>} = {}
+export let remoteStreams: {[key: string]: Readable<CallController>} = {}
 
 // export const localStream = writable<MediaStream | null>(null)
 // export const remoteStreamMap = writable<{[pub: string] : MediaStream | null}>({})

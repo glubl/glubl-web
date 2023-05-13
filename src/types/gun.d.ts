@@ -1,5 +1,5 @@
 import * as g from "gun/types/gun"
-import type { GunRTC } from "../lib/webrtcSignal"
+import type { GunRTC } from "../lib/webrtc"
 import type { Tunnel, TunnelConnection, Path } from "@src/lib/db/tunnel"
 
 declare module "gun" {
@@ -11,12 +11,36 @@ declare module "gun" {
     mypath: string
   }
 
+  export type GunPeer = {
+      id: string;
+      url: string;
+      queue: string[];
+      wire: RTCDataChannel | WebSocket | {
+        send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void;
+        close?: () => void
+      } | null;
+      rtc?: {
+        send(this: GunPeer["friendRtc"], msg: any): void;
+        receive(this: GunPeer["friendRtc"], sig: string): void;
+        rtc: RTCPeer;
+        tunPeer: TunnelPeer;
+    }
+  }
+
   export type MeshSayFn = (
     msg: {
       dam: string,
       [k: string]: any
     },
-    peers: { [pid: string]: gun.GunPeer }
+    peers: GunPeer | GunPeer[] | { [pid: string]: GunPeer }
+  ) => void
+
+  export type MeshHearFn = (
+    msg: {
+      dam: string,
+      [k: string]: any
+    },
+    peer: GunPeer
   ) => void
 
   export interface _GunRoot {
@@ -65,7 +89,7 @@ declare module "gun" {
       on?: boolean
     } | boolean
     
-    mesh: gun.GunMesh
+    mesh: GunMesh
     RTCPeerConnection?: typeof RTCPeerConnection | boolean
     RTCSessionDescription?: typeof RTCSessionDescription
     RTCIceCandidate?: typeof RTCIceCandidate
@@ -90,11 +114,13 @@ declare module "gun" {
   
 
   export interface GunMesh {
-    hi(peer: GunPeer & RTCPeerConnection): unknown;
-    bye(peer: GunPeer): unknown;
-    say: gun.MeshSayFn
-    hear: function (any, GunPeer): void
-    hear: { [k: string]: gun.MeshSayFn }
+    hi(peer: GunPeer): unknown
+    bye(peer: GunPeer): unknown
+    say: MeshSayFn
+    hear: { 
+      [k: string]: MeshHearFn,
+      (data: any, peer: GunPeer): void
+    }
   }
 
   export interface IGun {

@@ -1,9 +1,12 @@
 import { EventEmitter } from "events"
 import Gun, { type GunOptions, type GunPeer as GP, type IGunHookContext, type IGunInstance, type _GunRoot, type GunMesh, type IGun, type IGunOnEvent } from "gun"
 import { random } from "lodash"
+import { Debugger } from "../debugger"
 
-const LOG = (...arg: any[]) => console.log("<Tunnel>", ...arg)
-const ERR = (...arg: any[]) => console.error("<Tunnel>", ...arg)
+const isDebug = true
+const _debugger = Debugger("tunnel", isDebug)
+
+if (typeof window !== "undefined") (window as any).EEventEmitter = EventEmitter
 
 Gun.on('opt', function(this: IGunHookContext<_GunRoot>, root: _GunRoot) {
     let opt = root.opt as GunOptions
@@ -101,7 +104,7 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
 
     private putSoul?: string
     private announce() {
-        LOG("{{announce}}")
+        _debugger.log("{{announce}}")
         this.gun.get(this.path.announce)
             .get("id")
             .put(
@@ -120,7 +123,10 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
 
                     let id = (ack.ok as any).id
                     var peer = this.peers[id]
-                    if (peer) return
+                    if (peer) {
+                        _debugger.log("{{peer exists}}")
+                        return
+                    }
                     var soul = ''+(ack as any)["#"]
                     var peer = this.createPeer(id, soul)
                     soul = this.gun._.ask((ack: any) => {
@@ -130,11 +136,11 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
                             console.error(error)
                         }
                     })
-                    let raw = {
-                        s: soul,
+                    let raw: PeerRawMessage = {
+                        soul: soul,
                         id: this.id
                     }
-                    LOG("== 2 == Got soul, sending soul")
+                    _debugger.log("== 2 == Got soul, sending soul")
                     peer.sendRaw(raw, soul)
                 },
                 { acks: 20 } as any
@@ -142,22 +148,27 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
     }
 
     private listen() {
-        console.log("listen", this.path.listen)
+        _debugger.log("{{listen}}")
         this.gun.get(this.path.listen).get("id").on(async (v, _, meta, event) => {
             this.event = event
             if (meta.put['>'] < this.startTime || v === this.id) return
 
-            LOG("== 1 == Got signal, sending soul...")
+            _debugger.log("== 1 == Got signal, sending soul...")
 
             // Temporary callback to wait soul from the other side
             var callback = (ack: any) => {
-                LOG("== 3 == Got soul, initializing...")
                 if (!ack || !!ack.err || !ack.ok) return
+                _debugger.log("== 3 == Got soul, initializing...")
                 let msg = ack.ok as PeerRawMessage
-                if (msg.s && msg.id) {
+                if (msg.soul && msg.id) {
                     let peer = this.peers[msg.id]
-                    if (peer) return
-                    peer = this.createPeer(msg.id, msg.s)
+                    if (peer && [msg.id, this.id].sort()[0] === msg.id) {
+                        _debugger.log("{{peer exists}}")
+                        return
+                    } else if (peer) {
+                        peer.disconnect()
+                    }
+                    peer = this.createPeer(msg.id, msg.soul)
                     callback = (ack: any) => {
                         try {
                             peer!.receive(ack.ok)
@@ -185,16 +196,16 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
 
     removePeer(peer: TunnelPeer) {
         if (!peer.isDead) {
-            peer.kill()
+            peer.disconnect()
         }
         delete this.peers[peer.id]
     }
 }
 
 export interface PeerRawMessage {
-    m?: any // Message
-    t?: 'ping' | 'pong' | 'bye' | 'hi' // Command
-    s?: string // Soul
+    msg?: any // Message
+    type?: 'ping' | 'pong' | 'bye' | 'hi' // Command
+    soul?: string // Soul
     id?: string // id
 }
 
@@ -229,24 +240,23 @@ export class TunnelPeer extends EventEmitter<TunnelPeerEvents> {
         this.startHc()
     }
     receive(raw: PeerRawMessage) {
-        // console.log("raw", raw)
-
+        // _debugger.log("{{raw}}", raw)
         if (!this._connected) this.emit("connected")
         this._connected = true
 
         if (!raw) return
         this.emit("raw", raw)
         
-        if (raw.t === 'ping' || raw.t === 'pong')
-            this.emit("ping", raw.t)
-        else if (raw.t === 'bye')
-            this.kill(true)
+        if (raw.type === 'ping' || raw.type === 'pong')
+            this.emit("ping", raw.type)
+        else if (raw.type === 'bye')
+            this.disconnect("bye")
 
-        if (raw.m)
-            this.emit("message", raw.m)
+        if (raw.msg)
+            this.emit("message", raw.msg)
     }
     send(msg: any) {
-        this.sendRaw({m: msg})
+        this.sendRaw({msg: msg})
     }
     sendRaw(msg: PeerRawMessage, msgSoul?: string) {
         let m = { '@': this.soul, ok: msg} as any
@@ -259,7 +269,7 @@ export class TunnelPeer extends EventEmitter<TunnelPeerEvents> {
             this.hcDefer = undefined
         }
         this.hcDefer = setTimeout(() => this.hc(), (this.opt?.Tunnel || {}).startHc || 2000)
-        this.on('ping', (t) => t === 'ping' && this.sendRaw({t: 'pong'}))
+        this.on('ping', (t) => t === 'ping' && this.sendRaw({type: 'pong'}))
         this.on('ping', (t) => t === 'pong' && (this.responsive = true))
     }
     private hc() {
@@ -271,11 +281,11 @@ export class TunnelPeer extends EventEmitter<TunnelPeerEvents> {
             this.emit("unresponsive", ++this.tried)
         }
         this.responsive = false
-        this.sendRaw({t: 'ping'})
+        this.sendRaw({type: 'ping'})
         this.hcDefer = setTimeout(() => this.hc(), (this.opt?.Tunnel || {}).hc || 5000)
     }
-    kill(byed?: boolean) {
-        if (!byed) this.sendRaw({t: 'bye'})
+    disconnect(reason?: string) {
+        if (reason !== "bye") this.sendRaw({type: 'bye'})
         if (this.hcDefer) {
             clearTimeout(this.hcDefer)
             this.hcDefer = undefined

@@ -173,7 +173,7 @@
   <!-- <VirtualList items={chats} let:item={chat}> -->
   {#if onCall}
     <div id="call-section h-60 w-full overflow-y-hidden">
-      <CallScreen />
+      <CallScreen friend={friend} />
     </div>
   {/if}
   <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-16 pb-2">

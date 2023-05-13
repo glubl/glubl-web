@@ -20,7 +20,7 @@
 <div class="w-full h-full">
   {#if selectedMenu === ":calls:" && onCall}
     <div class="flex flex-row h-full">
-      <CallScreen />
+      <CallScreen friend={friend} />
     </div>
   {:else if selectedMenu === ":calls:"}
     <div class="flex flex-row h-full">
