@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,26 +13,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Tree = exports.Internal = exports.Leaf = void 0;
 /** Left-balanced binary tree, implemented using an immutable tree structure.
  * Operations that modify the tree return a new tree, leaving the original tree
  * unchanged.
  */
-class Leaf {
+export class Leaf {
+    data;
     constructor(data) {
         this.data = data;
     }
 }
-exports.Leaf = Leaf;
-class Internal {
+export class Internal {
+    data;
+    leftChild;
+    rightChild;
     constructor(data, leftChild, rightChild) {
         this.data = data;
         this.leftChild = leftChild;
         this.rightChild = rightChild;
     }
 }
-exports.Internal = Internal;
 /** The depth of a tree, given its size
  */
 function depth(size) {
@@ -42,6 +41,11 @@ function depth(size) {
 /** Basic path iterator from the root of a tree to the leaf.
  */
 class PathIterator {
+    size;
+    leafNum;
+    transform;
+    acc;
+    mask;
     constructor(size, leafNum, transform, acc) {
         this.size = size;
         this.leafNum = leafNum;
@@ -89,6 +93,8 @@ class PathIterator {
     }
 }
 class PathDirectionIterator {
+    size;
+    leafNum;
     constructor(size, leafNum) {
         this.size = size;
         this.leafNum = leafNum;
@@ -98,6 +104,9 @@ class PathDirectionIterator {
     }
 }
 class NodeIterator {
+    root;
+    path;
+    dirs;
     constructor(root) {
         this.root = root;
         this.path = [root];
@@ -154,6 +163,8 @@ class NodeIterator {
     }
 }
 class LeafIterator {
+    nodeIterator;
+    done;
     constructor(root) {
         this.nodeIterator = new NodeIterator(root);
     }
@@ -201,7 +212,9 @@ function addNode(node, size, data, newDataFn) {
         return new Internal(newDataFn(leftChild, rightChild), leftChild, rightChild);
     }
 }
-class Tree {
+export class Tree {
+    size; // the number of leaf nodes
+    root;
     constructor(data) {
         if (data.length === 2 &&
             typeof (data[0]) === "number" &&
@@ -317,5 +330,4 @@ class Tree {
         return new Internal(data[start + subTreeSize], leftChild, rightChild);
     }
 }
-exports.Tree = Tree;
 //# sourceMappingURL=lbbtree.js.map

@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,34 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-var exports = {};
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.BasicCredential = exports.Credential = void 0;
 /** A user is identified by a credential, which is a signing key.
  *
  * https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#credentials
  */
-const constants_1 = require("./constants");
-const signatures_1 = require("./signatures");
-const tlspl = require("./tlspl");
-class Credential {
+import { CredentialType, SignatureScheme } from "./constants";
+import { Ed25519 } from "./signatures";
+import * as tlspl from "./tlspl";
+export class Credential {
+    credentialType;
     constructor(credentialType) {
         this.credentialType = credentialType;
     }
     static decode(buffer, offset) {
         const [[credentialType], offset1] = tlspl.decode([tlspl.decodeUint16], buffer, offset);
         switch (credentialType) {
-            case constants_1.CredentialType.Basic:
+            case CredentialType.Basic:
                 return BasicCredential.decode(buffer, offset1);
             default:
                 throw new Error("Unknown credential type");
@@ -54,28 +41,29 @@ class Credential {
         ]);
     }
 }
-exports.Credential = Credential;
-class BasicCredential extends Credential {
+export class BasicCredential extends Credential {
+    identity;
+    signatureScheme;
+    signatureKey;
+    publicKey;
     constructor(identity, signatureScheme, signatureKey) {
-        super(constants_1.CredentialType.Basic);
+        super(CredentialType.Basic);
         this.identity = identity;
         this.signatureScheme = signatureScheme;
         this.signatureKey = signatureKey;
     }
-    verify(message, signature) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.publicKey) {
-                switch (this.signatureScheme) {
-                    case constants_1.SignatureScheme.ed25519:
-                        this.publicKey = yield signatures_1.Ed25519.deserializePublic(this.signatureKey);
-                        break;
-                    // FIXME: other signature schemes
-                    default:
-                        throw new Error("Unsupported signature scheme");
-                }
+    async verify(message, signature) {
+        if (!this.publicKey) {
+            switch (this.signatureScheme) {
+                case SignatureScheme.ed25519:
+                    this.publicKey = await Ed25519.deserializePublic(this.signatureKey);
+                    break;
+                // FIXME: other signature schemes
+                default:
+                    throw new Error("Unsupported signature scheme");
             }
-            return this.publicKey.verify(message, signature);
-        });
+        }
+        return this.publicKey.verify(message, signature);
     }
     static decode(buffer, offset) {
         const [[identity, signatureScheme, signatureKey], offset1] = tlspl.decode([
@@ -93,6 +81,5 @@ class BasicCredential extends Credential {
         ]);
     }
 }
-exports.BasicCredential = BasicCredential;
 // FIXME: x509 certificate
 //# sourceMappingURL=credential.js.map

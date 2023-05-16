@@ -1,4 +1,3 @@
-"use strict";
 /* This is a fairly straightforward port of the example code found in the Tree
  * Math section of the MLS spec, which is licensed under the simplified BSD
  * license.
@@ -32,8 +31,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.commonAncestor = exports.copath = exports.directPath = exports.sibling = exports.parent = exports.right = exports.left = exports.root = exports.nodeWidth = exports.level = void 0;
 /* Calculating node numbers in a tree.
  *
  * https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#tree-math-tree-math
@@ -42,7 +39,7 @@ exports.commonAncestor = exports.copath = exports.directPath = exports.sibling =
  * level 1, etc. If a node's children are at different levels, then its
  * level is the max level of its children plus one.
  */
-function level(x) {
+export function level(x) {
     if ((x & 0x01) === 0) {
         return 0;
     }
@@ -52,10 +49,9 @@ function level(x) {
     }
     return k;
 }
-exports.level = level;
 /* The number of nodes needed to represent a tree with n leaves.
  */
-function nodeWidth(n) {
+export function nodeWidth(n) {
     if (n === 0) {
         return 0;
     }
@@ -63,30 +59,27 @@ function nodeWidth(n) {
         return 2 * (n - 1) + 1;
     }
 }
-exports.nodeWidth = nodeWidth;
 /* The index of the root node of a tree with n leaves.
  */
-function root(n) {
+export function root(n) {
     const w = nodeWidth(n);
     return (1 << Math.floor(Math.log2(w))) - 1;
 }
-exports.root = root;
 /* The left child of an intermediate node. Note that because the tree is
  * left-balanced, there is no dependency on the size of the tree.
  */
-function left(x) {
+export function left(x) {
     const k = level(x);
     if (k === 0) {
         throw new Error('leaf node has no children');
     }
     return x ^ (0x01 << (k - 1));
 }
-exports.left = left;
 /* The right child of an intermediate node. Depends on the number of
  * leaves because the straightforward calculation can take you beyond the
  * edge of the tree.
  */
-function right(x, n) {
+export function right(x, n) {
     const k = level(x);
     if (k === 0) {
         throw new Error('leaf node has no children');
@@ -97,7 +90,6 @@ function right(x, n) {
     }
     return r;
 }
-exports.right = right;
 /* The immediate parent of a node. May be beyond the right edge of the
  * tree.
  */
@@ -109,7 +101,7 @@ function parentStep(x) {
 /* The parent of a node. As with the right child calculation, we have to
  * walk back until the parent is within the range of the tree.
  */
-function parent(x, n) {
+export function parent(x, n) {
     if (x === root(n)) {
         throw new Error('root node has no parent');
     }
@@ -119,10 +111,9 @@ function parent(x, n) {
     }
     return p;
 }
-exports.parent = parent;
 /* The other child of the node's parent.
  */
-function sibling(x, n) {
+export function sibling(x, n) {
     const p = parent(x, n);
     if (x < p) {
         return right(p, n);
@@ -131,10 +122,9 @@ function sibling(x, n) {
         return left(p);
     }
 }
-exports.sibling = sibling;
 /* The direct path of a node, ordered from leaf to root.
  */
-function directPath(x, n) {
+export function directPath(x, n) {
     const r = root(n);
     const d = [];
     while (x !== r) {
@@ -143,10 +133,9 @@ function directPath(x, n) {
     }
     return d;
 }
-exports.directPath = directPath;
 /* The copath of a node, ordered from leaf to root.
  */
-function copath(x, n) {
+export function copath(x, n) {
     if (x === root(n)) {
         return [];
     }
@@ -155,11 +144,10 @@ function copath(x, n) {
     d.pop();
     return d.map(y => sibling(y, n));
 }
-exports.copath = copath;
 /* The common ancestor of two nodes is the lowest node that is in the
  * direct paths of both leaves.
  */
-function commonAncestor(x, y) {
+export function commonAncestor(x, y) {
     // Handle cases where one is an ancestor of the other
     const lx = level(x) + 1;
     const ly = level(y) + 1;
@@ -180,5 +168,4 @@ function commonAncestor(x, y) {
     }
     return (xn << k) + (1 << (k - 1)) - 1;
 }
-exports.commonAncestor = commonAncestor;
 //# sourceMappingURL=treemath.js.map

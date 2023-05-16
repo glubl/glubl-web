@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,42 +13,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-var exports = {};
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Commit = exports.Reference = exports.ProposalWrapper = exports.ProposalOrRef = exports.Remove = exports.Update = exports.Add = exports.Proposal = exports.MLSCiphertext = exports.MLSPlaintext = exports.Sender = exports.UpdatePath = exports.UpdatePathNode = exports.HPKECiphertext = void 0;
-const epoch_1 = require("./epoch");
-const util_1 = require("./util");
-const constants_1 = require("./constants");
-const keypackage_1 = require("./keypackage");
-const keyschedule_1 = require("./keyschedule");
-const tlspl = require("./tlspl");
+import { decodeEpoch, encodeEpoch } from "./epoch";
+import { eqUint8Array } from "./util";
+import { EMPTY_BYTE_ARRAY, NONCE, KEY, ContentType, SenderType, ProposalType, ProposalOrRefType } from "./constants";
+import { KeyPackage } from "./keypackage";
+import { expandWithLabel } from "./keyschedule";
+import * as tlspl from "./tlspl";
 /* ciphertext encrypted to an HPKE public key
  *
  * https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#update-paths
  */
-class HPKECiphertext {
+export class HPKECiphertext {
+    kemOutput;
+    ciphertext;
     constructor(kemOutput, ciphertext) {
         this.kemOutput = kemOutput;
         this.ciphertext = ciphertext;
     }
-    static encrypt(hpke, pkR, aad, pt) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const [enc, ct] = yield hpke.sealBase(pkR, constants_1.EMPTY_BYTE_ARRAY, aad, pt);
-            return new HPKECiphertext(enc, ct);
-        });
+    static async encrypt(hpke, pkR, aad, pt) {
+        const [enc, ct] = await hpke.sealBase(pkR, EMPTY_BYTE_ARRAY, aad, pt);
+        return new HPKECiphertext(enc, ct);
     }
     decrypt(hpke, skR, aad) {
-        return hpke.openBase(this.kemOutput, skR, constants_1.EMPTY_BYTE_ARRAY, aad, this.ciphertext);
+        return hpke.openBase(this.kemOutput, skR, EMPTY_BYTE_ARRAY, aad, this.ciphertext);
     }
     static decode(buffer, offset) {
         const [[kemOutput, ciphertext], offset1] = tlspl.decode([tlspl.decodeVariableOpaque(2), tlspl.decodeVariableOpaque(2)], buffer, offset);
@@ -62,9 +48,10 @@ class HPKECiphertext {
         ]);
     }
 }
-exports.HPKECiphertext = HPKECiphertext;
 // https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#update-paths
-class UpdatePathNode {
+export class UpdatePathNode {
+    publicKey;
+    encryptedPathSecret;
     constructor(publicKey, // encoding of the node's KEMPublicKey
     encryptedPathSecret) {
         this.publicKey = publicKey;
@@ -81,14 +68,15 @@ class UpdatePathNode {
         ]);
     }
 }
-exports.UpdatePathNode = UpdatePathNode;
-class UpdatePath {
+export class UpdatePath {
+    leafKeyPackage;
+    nodes;
     constructor(leafKeyPackage, nodes) {
         this.leafKeyPackage = leafKeyPackage;
         this.nodes = nodes;
     }
     static decode(buffer, offset) {
-        const [[leafKeyPackage, nodes], offset1] = tlspl.decode([keypackage_1.KeyPackage.decode, tlspl.decodeVector(UpdatePathNode.decode, 4)], buffer, offset);
+        const [[leafKeyPackage, nodes], offset1] = tlspl.decode([KeyPackage.decode, tlspl.decodeVector(UpdatePathNode.decode, 4)], buffer, offset);
         return [new UpdatePath(leafKeyPackage, nodes), offset1];
     }
     get encoder() {
@@ -98,9 +86,10 @@ class UpdatePath {
         ]);
     }
 }
-exports.UpdatePath = UpdatePath;
 // https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#message-framing
-class Sender {
+export class Sender {
+    senderType;
+    sender;
     constructor(senderType, sender) {
         this.senderType = senderType;
         this.sender = sender;
@@ -116,8 +105,16 @@ class Sender {
         ]);
     }
 }
-exports.Sender = Sender;
-class MLSPlaintext {
+export class MLSPlaintext {
+    groupId;
+    epoch;
+    sender;
+    authenticatedData;
+    content;
+    signature;
+    confirmationTag;
+    membershipTag;
+    contentType;
     constructor(groupId, epoch, sender, authenticatedData, content, signature, confirmationTag, membershipTag) {
         this.groupId = groupId;
         this.epoch = epoch;
@@ -131,13 +128,13 @@ class MLSPlaintext {
     }
     static getContentType(content) {
         if (content instanceof Uint8Array) {
-            return constants_1.ContentType.Application;
+            return ContentType.Application;
         }
         else if (content instanceof Proposal) {
-            return constants_1.ContentType.Proposal;
+            return ContentType.Proposal;
         }
         else if (content instanceof Commit) {
-            return constants_1.ContentType.Commit;
+            return ContentType.Commit;
         }
         else {
             throw new Error("Unknown content type");
@@ -145,119 +142,111 @@ class MLSPlaintext {
     }
     static getContentDecode(contentType) {
         switch (contentType) {
-            case constants_1.ContentType.Application:
+            case ContentType.Application:
                 return tlspl.decodeVariableOpaque(4);
-            case constants_1.ContentType.Proposal:
+            case ContentType.Proposal:
                 return Proposal.decode;
-            case constants_1.ContentType.Commit:
+            case ContentType.Commit:
                 return Commit.decode;
             default:
                 throw new Error("Unknown content type");
         }
     }
-    static create(cipherSuite, groupId, epoch, sender, authenticatedData, content, signingKey, context) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (sender.senderType === constants_1.SenderType.Member && context === undefined) {
-                throw new Error("Group context must be provided for messages sent by members");
-            }
-            const contentType = MLSPlaintext.getContentType(content);
-            const mlsPlaintextTBS = tlspl.encode([
-                (sender.senderType === constants_1.SenderType.Member ? context.encoder : tlspl.empty),
-                tlspl.variableOpaque(groupId, 1),
-                (0, epoch_1.encodeEpoch)(epoch),
-                sender.encoder,
-                tlspl.variableOpaque(authenticatedData, 4),
-                tlspl.uint8(contentType),
-                content instanceof Uint8Array ?
-                    tlspl.variableOpaque(content, 4) :
-                    content.encoder,
-            ]);
-            const signature = yield signingKey.sign(mlsPlaintextTBS);
-            return new MLSPlaintext(groupId, epoch, sender, authenticatedData, content, signature);
-        });
+    static async create(cipherSuite, groupId, epoch, sender, authenticatedData, content, signingKey, context) {
+        if (sender.senderType === SenderType.Member && context === undefined) {
+            throw new Error("Group context must be provided for messages sent by members");
+        }
+        const contentType = MLSPlaintext.getContentType(content);
+        const mlsPlaintextTBS = tlspl.encode([
+            (sender.senderType === SenderType.Member ? context.encoder : tlspl.empty),
+            tlspl.variableOpaque(groupId, 1),
+            encodeEpoch(epoch),
+            sender.encoder,
+            tlspl.variableOpaque(authenticatedData, 4),
+            tlspl.uint8(contentType),
+            content instanceof Uint8Array ?
+                tlspl.variableOpaque(content, 4) :
+                content.encoder,
+        ]);
+        const signature = await signingKey.sign(mlsPlaintextTBS);
+        return new MLSPlaintext(groupId, epoch, sender, authenticatedData, content, signature);
     }
-    calculateTags(cipherSuite, confirmationKey, membershipKey, context) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this.content instanceof Commit && !confirmationKey) {
-                throw new Error("Confirmation key must be provided for commits");
-            }
-            this.confirmationTag = (this.content instanceof Commit && confirmationKey) ?
-                yield cipherSuite.hash.mac(confirmationKey, context.confirmedTranscriptHash) :
-                undefined;
-            const mlsPlaintextTBS = tlspl.encode([
-                (this.sender.senderType === constants_1.SenderType.Member ?
-                    context.encoder :
-                    tlspl.empty),
-                tlspl.variableOpaque(this.groupId, 1),
-                (0, epoch_1.encodeEpoch)(this.epoch),
-                this.sender.encoder,
-                tlspl.variableOpaque(this.authenticatedData, 4),
-                tlspl.uint8(this.contentType),
-                this.content instanceof Uint8Array ?
-                    tlspl.variableOpaque(this.content, 4) :
-                    this.content.encoder,
-            ]);
-            this.membershipTag =
-                yield cipherSuite.hash.mac(membershipKey, tlspl.encode([
-                    tlspl.opaque(mlsPlaintextTBS),
-                    tlspl.variableOpaque(this.signature, 2),
-                    this.confirmationTag ?
-                        tlspl.struct([tlspl.uint8(1), tlspl.variableOpaque(this.confirmationTag, 1)]) :
-                        tlspl.uint8(0),
-                ]));
-        });
+    async calculateTags(cipherSuite, confirmationKey, membershipKey, context) {
+        if (this.content instanceof Commit && !confirmationKey) {
+            throw new Error("Confirmation key must be provided for commits");
+        }
+        this.confirmationTag = (this.content instanceof Commit && confirmationKey) ?
+            await cipherSuite.hash.mac(confirmationKey, context.confirmedTranscriptHash) :
+            undefined;
+        const mlsPlaintextTBS = tlspl.encode([
+            (this.sender.senderType === SenderType.Member ?
+                context.encoder :
+                tlspl.empty),
+            tlspl.variableOpaque(this.groupId, 1),
+            encodeEpoch(this.epoch),
+            this.sender.encoder,
+            tlspl.variableOpaque(this.authenticatedData, 4),
+            tlspl.uint8(this.contentType),
+            this.content instanceof Uint8Array ?
+                tlspl.variableOpaque(this.content, 4) :
+                this.content.encoder,
+        ]);
+        this.membershipTag =
+            await cipherSuite.hash.mac(membershipKey, tlspl.encode([
+                tlspl.opaque(mlsPlaintextTBS),
+                tlspl.variableOpaque(this.signature, 2),
+                this.confirmationTag ?
+                    tlspl.struct([tlspl.uint8(1), tlspl.variableOpaque(this.confirmationTag, 1)]) :
+                    tlspl.uint8(0),
+            ]));
     }
-    verify(cipherSuite, signingPubKey, context, membershipKey) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this.sender.senderType === constants_1.SenderType.Member && context === undefined) {
-                throw new Error("Group context must be provided for messages sent by members");
+    async verify(cipherSuite, signingPubKey, context, membershipKey) {
+        if (this.sender.senderType === SenderType.Member && context === undefined) {
+            throw new Error("Group context must be provided for messages sent by members");
+        }
+        if (this.content instanceof Commit && this.confirmationTag === undefined) {
+            throw new Error("Confirmation tag must be present for commits");
+        }
+        const mlsPlaintextTBS = tlspl.encode([
+            (this.sender.senderType === SenderType.Member ? context.encoder : tlspl.empty),
+            tlspl.variableOpaque(this.groupId, 1),
+            encodeEpoch(this.epoch),
+            this.sender.encoder,
+            tlspl.variableOpaque(this.authenticatedData, 4),
+            tlspl.uint8(this.contentType),
+            this.content instanceof Uint8Array ?
+                tlspl.variableOpaque(this.content, 4) :
+                this.content.encoder,
+        ]);
+        if (await signingPubKey.verify(mlsPlaintextTBS, this.signature) === false) {
+            return false;
+        }
+        if (this.membershipTag) {
+            if (membershipKey === undefined) {
+                throw new Error("Membership tag is present, but membership key not supplied");
             }
-            if (this.content instanceof Commit && this.confirmationTag === undefined) {
-                throw new Error("Confirmation tag must be present for commits");
-            }
-            const mlsPlaintextTBS = tlspl.encode([
-                (this.sender.senderType === constants_1.SenderType.Member ? context.encoder : tlspl.empty),
-                tlspl.variableOpaque(this.groupId, 1),
-                (0, epoch_1.encodeEpoch)(this.epoch),
-                this.sender.encoder,
-                tlspl.variableOpaque(this.authenticatedData, 4),
-                tlspl.uint8(this.contentType),
-                this.content instanceof Uint8Array ?
-                    tlspl.variableOpaque(this.content, 4) :
-                    this.content.encoder,
+            const mlsPlaintextTBM = tlspl.encode([
+                tlspl.opaque(mlsPlaintextTBS),
+                tlspl.variableOpaque(this.signature, 2),
+                this.confirmationTag ?
+                    tlspl.struct([tlspl.uint8(1), tlspl.variableOpaque(this.confirmationTag, 1)]) :
+                    tlspl.uint8(0),
             ]);
-            if ((yield signingPubKey.verify(mlsPlaintextTBS, this.signature)) === false) {
-                return false;
-            }
-            if (this.membershipTag) {
-                if (membershipKey === undefined) {
-                    throw new Error("Membership tag is present, but membership key not supplied");
-                }
-                const mlsPlaintextTBM = tlspl.encode([
-                    tlspl.opaque(mlsPlaintextTBS),
-                    tlspl.variableOpaque(this.signature, 2),
-                    this.confirmationTag ?
-                        tlspl.struct([tlspl.uint8(1), tlspl.variableOpaque(this.confirmationTag, 1)]) :
-                        tlspl.uint8(0),
-                ]);
-                return yield cipherSuite.hash.verifyMac(membershipKey, mlsPlaintextTBM, this.membershipTag);
-            }
-            return true;
-        });
+            return await cipherSuite.hash.verifyMac(membershipKey, mlsPlaintextTBM, this.membershipTag);
+        }
+        return true;
     }
-    verifyConfirmationTag(cipherSuite, confirmationKey, context) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!(this.content instanceof Commit)) {
-                throw new Error("Confirmation tag can only be checked on commit messages");
-            }
-            const confirmationTag = yield cipherSuite.hash.mac(confirmationKey, context.confirmedTranscriptHash);
-            return (0, util_1.eqUint8Array)(confirmationTag, this.confirmationTag);
-        });
+    async verifyConfirmationTag(cipherSuite, confirmationKey, context) {
+        if (!(this.content instanceof Commit)) {
+            throw new Error("Confirmation tag can only be checked on commit messages");
+        }
+        const confirmationTag = await cipherSuite.hash.mac(confirmationKey, context.confirmedTranscriptHash);
+        return eqUint8Array(confirmationTag, this.confirmationTag);
     }
     static decode(buffer, offset) {
         const [[groupId, epoch, sender, authenticatedData, contentType], offset1] = tlspl.decode([
             tlspl.decodeVariableOpaque(1),
-            epoch_1.decodeEpoch,
+            decodeEpoch,
             Sender.decode,
             tlspl.decodeVariableOpaque(4),
             tlspl.decodeUint8,
@@ -275,7 +264,7 @@ class MLSPlaintext {
     get encoder() {
         return tlspl.struct([
             tlspl.variableOpaque(this.groupId, 1),
-            (0, epoch_1.encodeEpoch)(this.epoch),
+            encodeEpoch(this.epoch),
             this.sender.encoder,
             tlspl.variableOpaque(this.authenticatedData, 4),
             tlspl.uint8(this.contentType),
@@ -301,7 +290,7 @@ class MLSPlaintext {
         }
         return tlspl.struct([
             tlspl.variableOpaque(this.groupId, 1),
-            (0, epoch_1.encodeEpoch)(this.epoch),
+            encodeEpoch(this.epoch),
             this.sender.encoder,
             // FIXME: tlspl.variableOpaque(this.authenticatedData, 4),
             tlspl.uint8(this.contentType),
@@ -312,8 +301,13 @@ class MLSPlaintext {
         ]);
     }
 }
-exports.MLSPlaintext = MLSPlaintext;
-class MLSCiphertext {
+export class MLSCiphertext {
+    groupId;
+    epoch;
+    contentType;
+    authenticatedData;
+    encryptedSenderData;
+    ciphertext;
     constructor(groupId, epoch, contentType, authenticatedData, encryptedSenderData, ciphertext) {
         this.groupId = groupId;
         this.epoch = epoch;
@@ -322,112 +316,108 @@ class MLSCiphertext {
         this.encryptedSenderData = encryptedSenderData;
         this.ciphertext = ciphertext;
     }
-    static create(cipherSuite, plaintext, contentRatchet, senderDataSecret) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (plaintext.sender.senderType !== constants_1.SenderType.Member) {
-                throw new Error("Sender must be a group member");
-            }
-            const hpke = cipherSuite.hpke;
-            const mlsCiphertextContent = tlspl.encode([
-                plaintext.content instanceof Uint8Array ?
-                    tlspl.variableOpaque(plaintext.content, 4) :
-                    plaintext.content.encoder,
-                tlspl.variableOpaque(plaintext.signature, 2),
-                plaintext.confirmationTag ?
-                    tlspl.struct([
-                        tlspl.uint8(1), tlspl.variableOpaque(plaintext.confirmationTag, 1),
-                    ]) :
-                    tlspl.uint8(0),
-                tlspl.variableOpaque(constants_1.EMPTY_BYTE_ARRAY, 2), // FIXME: padding
-            ]);
-            const mlsCiphertextContentAad = tlspl.encode([
-                tlspl.variableOpaque(plaintext.groupId, 1),
-                (0, epoch_1.encodeEpoch)(plaintext.epoch),
-                tlspl.uint8(plaintext.contentType),
-                tlspl.variableOpaque(plaintext.authenticatedData, 4),
-            ]);
-            // encrypt content
-            const reuseGuard = new Uint8Array(4);
-            globalThis.crypto.getRandomValues(reuseGuard);
-            const generation = contentRatchet.generation;
-            const [contentNonce, contentKey] = yield contentRatchet.getKey(generation);
-            for (let i = 0; i < 4; i++) {
-                contentNonce[i] ^= reuseGuard[i];
-            }
-            const ciphertext = yield hpke.aead.seal(contentKey, contentNonce, mlsCiphertextContentAad, mlsCiphertextContent);
-            contentKey.fill(0);
-            contentNonce.fill(0);
-            // encrypt sender
-            const mlsSenderData = tlspl.encode([
-                tlspl.uint32(plaintext.sender.sender),
-                tlspl.uint32(generation),
-                tlspl.opaque(reuseGuard),
-            ]);
-            const mlsSenderDataAad = tlspl.encode([
-                tlspl.variableOpaque(plaintext.groupId, 1),
-                (0, epoch_1.encodeEpoch)(plaintext.epoch),
-                tlspl.uint8(plaintext.contentType),
-            ]);
-            const ciphertextSample = ciphertext.subarray(0, hpke.kdf.extractLength);
-            const [senderDataKey, senderDataNonce] = yield Promise.all([
-                (0, keyschedule_1.expandWithLabel)(cipherSuite, senderDataSecret, constants_1.KEY, ciphertextSample, hpke.aead.keyLength),
-                (0, keyschedule_1.expandWithLabel)(cipherSuite, senderDataSecret, constants_1.NONCE, ciphertextSample, hpke.aead.nonceLength),
-            ]);
-            const encryptedSenderData = yield hpke.aead.seal(senderDataKey, senderDataNonce, mlsSenderDataAad, mlsSenderData);
-            return new MLSCiphertext(plaintext.groupId, plaintext.epoch, plaintext.contentType, plaintext.authenticatedData, encryptedSenderData, ciphertext);
-        });
+    static async create(cipherSuite, plaintext, contentRatchet, senderDataSecret) {
+        if (plaintext.sender.senderType !== SenderType.Member) {
+            throw new Error("Sender must be a group member");
+        }
+        const hpke = cipherSuite.hpke;
+        const mlsCiphertextContent = tlspl.encode([
+            plaintext.content instanceof Uint8Array ?
+                tlspl.variableOpaque(plaintext.content, 4) :
+                plaintext.content.encoder,
+            tlspl.variableOpaque(plaintext.signature, 2),
+            plaintext.confirmationTag ?
+                tlspl.struct([
+                    tlspl.uint8(1), tlspl.variableOpaque(plaintext.confirmationTag, 1),
+                ]) :
+                tlspl.uint8(0),
+            tlspl.variableOpaque(EMPTY_BYTE_ARRAY, 2), // FIXME: padding
+        ]);
+        const mlsCiphertextContentAad = tlspl.encode([
+            tlspl.variableOpaque(plaintext.groupId, 1),
+            encodeEpoch(plaintext.epoch),
+            tlspl.uint8(plaintext.contentType),
+            tlspl.variableOpaque(plaintext.authenticatedData, 4),
+        ]);
+        // encrypt content
+        const reuseGuard = new Uint8Array(4);
+        globalThis.crypto.getRandomValues(reuseGuard);
+        const generation = contentRatchet.generation;
+        const [contentNonce, contentKey] = await contentRatchet.getKey(generation);
+        for (let i = 0; i < 4; i++) {
+            contentNonce[i] ^= reuseGuard[i];
+        }
+        const ciphertext = await hpke.aead.seal(contentKey, contentNonce, mlsCiphertextContentAad, mlsCiphertextContent);
+        contentKey.fill(0);
+        contentNonce.fill(0);
+        // encrypt sender
+        const mlsSenderData = tlspl.encode([
+            tlspl.uint32(plaintext.sender.sender),
+            tlspl.uint32(generation),
+            tlspl.opaque(reuseGuard),
+        ]);
+        const mlsSenderDataAad = tlspl.encode([
+            tlspl.variableOpaque(plaintext.groupId, 1),
+            encodeEpoch(plaintext.epoch),
+            tlspl.uint8(plaintext.contentType),
+        ]);
+        const ciphertextSample = ciphertext.subarray(0, hpke.kdf.extractLength);
+        const [senderDataKey, senderDataNonce] = await Promise.all([
+            expandWithLabel(cipherSuite, senderDataSecret, KEY, ciphertextSample, hpke.aead.keyLength),
+            expandWithLabel(cipherSuite, senderDataSecret, NONCE, ciphertextSample, hpke.aead.nonceLength),
+        ]);
+        const encryptedSenderData = await hpke.aead.seal(senderDataKey, senderDataNonce, mlsSenderDataAad, mlsSenderData);
+        return new MLSCiphertext(plaintext.groupId, plaintext.epoch, plaintext.contentType, plaintext.authenticatedData, encryptedSenderData, ciphertext);
     }
-    decrypt(cipherSuite, getContentRatchet, senderDataSecret) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const hpke = cipherSuite.hpke;
-            // decrypt sender
-            const mlsSenderDataAad = tlspl.encode([
-                tlspl.variableOpaque(this.groupId, 1),
-                (0, epoch_1.encodeEpoch)(this.epoch),
-                tlspl.uint8(this.contentType),
-            ]);
-            const ciphertextSample = this.ciphertext.subarray(0, hpke.kdf.extractLength);
-            const [senderDataKey, senderDataNonce] = yield Promise.all([
-                (0, keyschedule_1.expandWithLabel)(cipherSuite, senderDataSecret, constants_1.KEY, ciphertextSample, hpke.aead.keyLength),
-                (0, keyschedule_1.expandWithLabel)(cipherSuite, senderDataSecret, constants_1.NONCE, ciphertextSample, hpke.aead.nonceLength),
-            ]);
-            const mlsSenderData = yield hpke.aead.open(senderDataKey, senderDataNonce, mlsSenderDataAad, this.encryptedSenderData);
-            // eslint-disable-next-line comma-dangle, array-bracket-spacing
-            const [[sender, generation, reuseGuard],] = tlspl.decode([
-                tlspl.decodeUint32,
-                tlspl.decodeUint32,
-                tlspl.decodeOpaque(4),
-            ], mlsSenderData, 0);
-            // decrypt content
-            const mlsCiphertextContentAad = tlspl.encode([
-                tlspl.variableOpaque(this.groupId, 1),
-                (0, epoch_1.encodeEpoch)(this.epoch),
-                tlspl.uint8(this.contentType),
-                tlspl.variableOpaque(this.authenticatedData, 4),
-            ]);
-            const [contentNonce, contentKey] = yield (yield getContentRatchet(sender))
-                .getKey(generation);
-            for (let i = 0; i < 4; i++) {
-                contentNonce[i] ^= reuseGuard[i];
-            }
-            const mlsCiphertextContent = yield hpke.aead.open(contentKey, contentNonce, mlsCiphertextContentAad, this.ciphertext);
-            contentKey.fill(0);
-            contentNonce.fill(0);
-            const contentDecode = MLSPlaintext.getContentDecode(this.contentType);
-            // eslint-disable-next-line comma-dangle, array-bracket-spacing
-            const [[content, signature, confirmationTag,],] = tlspl.decode([
-                contentDecode,
-                tlspl.decodeVariableOpaque(2),
-                tlspl.decodeOptional(tlspl.decodeVariableOpaque(1)),
-                tlspl.decodeOptional(tlspl.decodeVariableOpaque(2)),
-            ], mlsCiphertextContent, 0);
-            return new MLSPlaintext(this.groupId, this.epoch, new Sender(constants_1.SenderType.Member, sender), this.authenticatedData, content, signature, confirmationTag);
-        });
+    async decrypt(cipherSuite, getContentRatchet, senderDataSecret) {
+        const hpke = cipherSuite.hpke;
+        // decrypt sender
+        const mlsSenderDataAad = tlspl.encode([
+            tlspl.variableOpaque(this.groupId, 1),
+            encodeEpoch(this.epoch),
+            tlspl.uint8(this.contentType),
+        ]);
+        const ciphertextSample = this.ciphertext.subarray(0, hpke.kdf.extractLength);
+        const [senderDataKey, senderDataNonce] = await Promise.all([
+            expandWithLabel(cipherSuite, senderDataSecret, KEY, ciphertextSample, hpke.aead.keyLength),
+            expandWithLabel(cipherSuite, senderDataSecret, NONCE, ciphertextSample, hpke.aead.nonceLength),
+        ]);
+        const mlsSenderData = await hpke.aead.open(senderDataKey, senderDataNonce, mlsSenderDataAad, this.encryptedSenderData);
+        // eslint-disable-next-line comma-dangle, array-bracket-spacing
+        const [[sender, generation, reuseGuard],] = tlspl.decode([
+            tlspl.decodeUint32,
+            tlspl.decodeUint32,
+            tlspl.decodeOpaque(4),
+        ], mlsSenderData, 0);
+        // decrypt content
+        const mlsCiphertextContentAad = tlspl.encode([
+            tlspl.variableOpaque(this.groupId, 1),
+            encodeEpoch(this.epoch),
+            tlspl.uint8(this.contentType),
+            tlspl.variableOpaque(this.authenticatedData, 4),
+        ]);
+        const [contentNonce, contentKey] = await (await getContentRatchet(sender))
+            .getKey(generation);
+        for (let i = 0; i < 4; i++) {
+            contentNonce[i] ^= reuseGuard[i];
+        }
+        const mlsCiphertextContent = await hpke.aead.open(contentKey, contentNonce, mlsCiphertextContentAad, this.ciphertext);
+        contentKey.fill(0);
+        contentNonce.fill(0);
+        const contentDecode = MLSPlaintext.getContentDecode(this.contentType);
+        // eslint-disable-next-line comma-dangle, array-bracket-spacing
+        const [[content, signature, confirmationTag,],] = tlspl.decode([
+            contentDecode,
+            tlspl.decodeVariableOpaque(2),
+            tlspl.decodeOptional(tlspl.decodeVariableOpaque(1)),
+            tlspl.decodeOptional(tlspl.decodeVariableOpaque(2)),
+        ], mlsCiphertextContent, 0);
+        return new MLSPlaintext(this.groupId, this.epoch, new Sender(SenderType.Member, sender), this.authenticatedData, content, signature, confirmationTag);
     }
     static decode(buffer, offset) {
         const [[groupId, epoch, contentType, authenticatedData, encryptedSenderData, ciphertext,], offset1,] = tlspl.decode([
             tlspl.decodeVariableOpaque(1),
-            epoch_1.decodeEpoch,
+            decodeEpoch,
             tlspl.decodeUint8,
             tlspl.decodeVariableOpaque(4),
             tlspl.decodeVariableOpaque(1),
@@ -441,7 +431,7 @@ class MLSCiphertext {
     get encoder() {
         return tlspl.struct([
             tlspl.variableOpaque(this.groupId, 1),
-            (0, epoch_1.encodeEpoch)(this.epoch),
+            encodeEpoch(this.epoch),
             tlspl.uint8(this.contentType),
             tlspl.variableOpaque(this.authenticatedData, 4),
             tlspl.variableOpaque(this.encryptedSenderData, 1),
@@ -449,40 +439,38 @@ class MLSCiphertext {
         ]);
     }
 }
-exports.MLSCiphertext = MLSCiphertext;
 // https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#proposals
-class Proposal {
+export class Proposal {
+    msgType;
     constructor(msgType) {
         this.msgType = msgType;
     }
     static decode(buffer, offset) {
         const [msgType, offset1] = tlspl.decodeUint8(buffer, offset);
         switch (msgType) {
-            case constants_1.ProposalType.Add:
+            case ProposalType.Add:
                 return Add.decode(buffer, offset1);
-            case constants_1.ProposalType.Update:
+            case ProposalType.Update:
                 return Update.decode(buffer, offset1);
-            case constants_1.ProposalType.Remove:
+            case ProposalType.Remove:
                 return Remove.decode(buffer, offset1);
             default:
                 throw new Error("Unknown proposal type");
         }
     }
-    getHash(cipherSuite) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const encoding = tlspl.encode([this.encoder]);
-            return yield cipherSuite.hash.hash(encoding);
-        });
+    async getHash(cipherSuite) {
+        const encoding = tlspl.encode([this.encoder]);
+        return await cipherSuite.hash.hash(encoding);
     }
 }
-exports.Proposal = Proposal;
-class Add extends Proposal {
+export class Add extends Proposal {
+    keyPackage;
     constructor(keyPackage) {
-        super(constants_1.ProposalType.Add);
+        super(ProposalType.Add);
         this.keyPackage = keyPackage;
     }
     static decode(buffer, offset) {
-        const [keyPackage, offset1] = keypackage_1.KeyPackage.decode(buffer, offset);
+        const [keyPackage, offset1] = KeyPackage.decode(buffer, offset);
         return [new Add(keyPackage), offset1];
     }
     get encoder() {
@@ -492,15 +480,16 @@ class Add extends Proposal {
         ]);
     }
 }
-exports.Add = Add;
-class Update extends Proposal {
+export class Update extends Proposal {
+    keyPackage;
+    privateKey;
     constructor(keyPackage, privateKey) {
-        super(constants_1.ProposalType.Update);
+        super(ProposalType.Update);
         this.keyPackage = keyPackage;
         this.privateKey = privateKey;
     }
     static decode(buffer, offset) {
-        const [keyPackage, offset1] = keypackage_1.KeyPackage.decode(buffer, offset);
+        const [keyPackage, offset1] = KeyPackage.decode(buffer, offset);
         return [new Update(keyPackage), offset1];
     }
     get encoder() {
@@ -510,10 +499,10 @@ class Update extends Proposal {
         ]);
     }
 }
-exports.Update = Update;
-class Remove extends Proposal {
+export class Remove extends Proposal {
+    removed;
     constructor(removed) {
-        super(constants_1.ProposalType.Remove);
+        super(ProposalType.Remove);
         this.removed = removed;
     }
     static decode(buffer, offset) {
@@ -527,29 +516,29 @@ class Remove extends Proposal {
         ]);
     }
 }
-exports.Remove = Remove;
 // FIXME: more proposals
 // https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#commit
-class ProposalOrRef {
+export class ProposalOrRef {
+    proposalOrRef;
     constructor(proposalOrRef) {
         this.proposalOrRef = proposalOrRef;
     }
     static decode(buffer, offset) {
         const [proposalOrRef, offset1] = tlspl.decodeUint8(buffer, offset);
         switch (proposalOrRef) {
-            case constants_1.ProposalOrRefType.Proposal:
+            case ProposalOrRefType.Proposal:
                 return ProposalWrapper.decode(buffer, offset1);
-            case constants_1.ProposalOrRefType.Reference:
+            case ProposalOrRefType.Reference:
                 return Reference.decode(buffer, offset1);
             default:
                 throw new Error("Unknown proposalOrRef type");
         }
     }
 }
-exports.ProposalOrRef = ProposalOrRef;
-class ProposalWrapper extends ProposalOrRef {
+export class ProposalWrapper extends ProposalOrRef {
+    proposal;
     constructor(proposal) {
-        super(constants_1.ProposalOrRefType.Proposal);
+        super(ProposalOrRefType.Proposal);
         this.proposal = proposal;
     }
     static decode(buffer, offset) {
@@ -563,10 +552,10 @@ class ProposalWrapper extends ProposalOrRef {
         ]);
     }
 }
-exports.ProposalWrapper = ProposalWrapper;
-class Reference extends ProposalOrRef {
+export class Reference extends ProposalOrRef {
+    hash;
     constructor(hash) {
-        super(constants_1.ProposalOrRefType.Reference);
+        super(ProposalOrRefType.Reference);
         this.hash = hash;
     }
     static decode(buffer, offset) {
@@ -580,8 +569,9 @@ class Reference extends ProposalOrRef {
         ]);
     }
 }
-exports.Reference = Reference;
-class Commit {
+export class Commit {
+    proposals;
+    updatePath;
     constructor(proposals, updatePath) {
         this.proposals = proposals;
         this.updatePath = updatePath;
@@ -609,5 +599,4 @@ class Commit {
         }
     }
 }
-exports.Commit = Commit;
 //# sourceMappingURL=message.js.map

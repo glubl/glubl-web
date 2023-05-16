@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,16 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.x25519HkdfSha256 = exports.p521HkdfSha512 = exports.p384HkdfSha384 = exports.p256HkdfSha256 = void 0;
 // 4.1.  DH-Based KEM
 /** DHKEM methods, build from DH groups and KDFs */
-const base_1 = require("./base");
-const hkdf_1 = require("./hkdf");
-const ecdh_nist_1 = require("./ecdh-nist");
-const ecdh_x_1 = require("./ecdh-x");
-exports.p256HkdfSha256 = (0, base_1.makeDHKEM)(ecdh_nist_1.p256, hkdf_1.hkdfSha256, 0x0010);
-exports.p384HkdfSha384 = (0, base_1.makeDHKEM)(ecdh_nist_1.p384, hkdf_1.hkdfSha384, 0x0011);
-exports.p521HkdfSha512 = (0, base_1.makeDHKEM)(ecdh_nist_1.p521, hkdf_1.hkdfSha512, 0x0012);
-exports.x25519HkdfSha256 = (0, base_1.makeDHKEM)(ecdh_x_1.x25519, hkdf_1.hkdfSha256, 0x0020);
+import { makeDHKEM } from "./base";
+import { hkdfSha256, hkdfSha384, hkdfSha512 } from "./hkdf";
+import { p256, p384, p521 } from "./ecdh-nist";
+import { x25519 } from "./ecdh-x";
+export const p256HkdfSha256 = makeDHKEM(p256, hkdfSha256, 0x0010);
+export const p384HkdfSha384 = makeDHKEM(p384, hkdfSha384, 0x0011);
+export const p521HkdfSha512 = makeDHKEM(p521, hkdfSha512, 0x0012);
+export const x25519HkdfSha256 = makeDHKEM(x25519, hkdfSha256, 0x0020);
 //# sourceMappingURL=dhkem.js.map

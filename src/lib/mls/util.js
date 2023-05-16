@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,9 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Uint8ArrayMap = exports.hexToUint8Array = exports.stringToUint8Array = exports.geUint8Array = exports.eqUint8Array = exports.concatUint8Array = void 0;
-function concatUint8Array(arrays) {
+export function concatUint8Array(arrays) {
     const len = arrays.reduce((acc, arr) => acc + arr.byteLength, 0);
     const ret = new Uint8Array(len);
     let pos = 0;
@@ -26,8 +23,7 @@ function concatUint8Array(arrays) {
     }
     return ret;
 }
-exports.concatUint8Array = concatUint8Array;
-function eqUint8Array(a, b) {
+export function eqUint8Array(a, b) {
     if (a.length != b.length) {
         return false;
     }
@@ -39,9 +35,8 @@ function eqUint8Array(a, b) {
     }
     return true;
 }
-exports.eqUint8Array = eqUint8Array;
 // is the first array greater or equal to the second array
-function geUint8Array(a, b) {
+export function geUint8Array(a, b) {
     if (a.length != b.length) {
         throw new Error("Length must be the same");
     }
@@ -55,15 +50,13 @@ function geUint8Array(a, b) {
     }
     return true;
 }
-exports.geUint8Array = geUint8Array;
-function stringToUint8Array(str) {
+export function stringToUint8Array(str) {
     const ret = new Uint8Array(str.length);
     for (let i = 0; i < str.length; i++) {
         ret[i] = str.charCodeAt(i);
     }
     return ret;
 }
-exports.stringToUint8Array = stringToUint8Array;
 const hexMap = {};
 for (let i = 0; i < 256; i++) {
     let hex = i.toString(16);
@@ -72,24 +65,23 @@ for (let i = 0; i < 256; i++) {
     }
     hexMap[hex] = i;
 }
-function hexToUint8Array(str) {
+export function hexToUint8Array(str) {
     const ret = new Uint8Array(str.length / 2);
     for (let i = 0; 2 * i < str.length; i++) {
         ret[i] = hexMap[str.substring(2 * i, 2 * i + 2)];
     }
     return ret;
 }
-exports.hexToUint8Array = hexToUint8Array;
 function keyToString(key) {
     // `toString` returns different things if `key` is a `Uint8Array` or a
     // `Buffer`, so do this to make it consistent
     return key.join(",");
 }
 // map that uses Uint8Array as keys
-class Uint8ArrayMap {
+export class Uint8ArrayMap {
+    map = new Map();
+    keyMap = new Map();
     constructor(iterable) {
-        this.map = new Map();
-        this.keyMap = new Map();
         if (iterable) {
             for (const [k, v] of iterable) {
                 this.set(k, v);
@@ -139,8 +131,9 @@ class Uint8ArrayMap {
         return new Uint8ArrayMapIterator(this);
     }
 }
-exports.Uint8ArrayMap = Uint8ArrayMap;
 class Uint8ArrayMapIterator {
+    map;
+    keyIterator;
     constructor(map) {
         this.map = map;
         this.keyIterator = map.keys()[Symbol.iterator]();

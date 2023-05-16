@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2021 The Matrix.org Foundation C.I.C.
 
@@ -14,13 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.decodeEpoch = exports.encodeEpoch = exports.eqEpoch = void 0;
-const tlspl = require("./tlspl");
-function eqEpoch(e1, e2) {
+import * as tlspl from "./tlspl";
+export function eqEpoch(e1, e2) {
     return e1 === e2;
 }
-exports.eqEpoch = eqEpoch;
-exports.encodeEpoch = tlspl.uint64;
-exports.decodeEpoch = tlspl.decodeUint64;
+export const encodeEpoch = tlspl.uint64;
+export const decodeEpoch = tlspl.decodeUint64;
 //# sourceMappingURL=epoch.js.map

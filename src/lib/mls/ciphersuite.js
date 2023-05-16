@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,21 +13,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-var exports = {};
-
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.cipherSuiteById = exports.mls10_128_DhKemX25519Aes128GcmSha256Ed25519 = void 0;
-const hpke_1 = require("./hpke");
-const signatures_1 = require("./signatures");
-const constants_1 = require("./constants");
-const hash_1 = require("./hash");
+import { x25519HkdfSha256Aes128Gcm } from "./hpke";
+import { Ed25519 } from "./signatures";
+import { SignatureScheme as SignatureSchemeId } from "./constants";
+import { sha256 } from "./hash";
 // eslint-disable-next-line camelcase
-exports.mls10_128_DhKemX25519Aes128GcmSha256Ed25519 = {
-    hpke: hpke_1.x25519HkdfSha256Aes128Gcm,
-    signatureScheme: signatures_1.Ed25519,
-    hash: hash_1.sha256,
+export const mls10_128_DhKemX25519Aes128GcmSha256Ed25519 = {
+    hpke: x25519HkdfSha256Aes128Gcm,
+    signatureScheme: Ed25519,
+    hash: sha256,
     id: 1,
-    signatureSchemeId: constants_1.SignatureScheme.ed25519,
+    signatureSchemeId: SignatureSchemeId.ed25519,
 };
 // FIXME:
 // MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 = 2,
@@ -36,7 +31,7 @@ exports.mls10_128_DhKemX25519Aes128GcmSha256Ed25519 = {
 // MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448 = 4,
 // MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 = 5,
 // MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 = 6,
-exports.cipherSuiteById = {
-    1: exports.mls10_128_DhKemX25519Aes128GcmSha256Ed25519,
+export const cipherSuiteById = {
+    1: mls10_128_DhKemX25519Aes128GcmSha256Ed25519,
 };
 //# sourceMappingURL=ciphersuite.js.map

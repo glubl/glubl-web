@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,26 +13,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-var exports = {};
-
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.dh = exports.aead = exports.kdf = exports.kem = void 0;
-const ecdh_nist_1 = require("./hpke/ecdh-nist");
-const hkdf_1 = require("./hpke/hkdf");
-const dhkem_1 = require("./hpke/dhkem");
-const aes_1 = require("./hpke/aes");
-exports.kem = {
-    p256HkdfSha256: dhkem_1.p256HkdfSha256,
+import { p256 } from "./hpke/ecdh-nist";
+import { hkdfSha256 } from "./hpke/hkdf";
+import { p256HkdfSha256 } from "./hpke/dhkem";
+import { aes128Gcm, aes256Gcm } from "./hpke/aes";
+export const kem = {
+    p256HkdfSha256,
 };
-exports.kdf = {
-    hkdfSha256: hkdf_1.hkdfSha256,
+export const kdf = {
+    hkdfSha256,
 };
-exports.aead = {
-    aes128Gcm: aes_1.aes128Gcm,
-    aes256Gcm: aes_1.aes256Gcm,
+export const aead = {
+    aes128Gcm,
+    aes256Gcm,
 };
-exports.dh = {
-    p256: ecdh_nist_1.p256,
+export const dh = {
+    p256,
 };
 //# sourceMappingURL=main.js.map

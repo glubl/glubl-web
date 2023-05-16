@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,46 +13,44 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.NodeType = exports.ProposalOrRefType = exports.ProposalType = exports.SenderType = exports.ContentType = exports.ProtocolVersion = exports.SignatureScheme = exports.CredentialType = exports.ExtensionType = exports.WELCOME = exports.TREE = exports.SK = exports.SHARED_SECRET = exports.SENDER_DATA = exports.SECRET = exports.SEC = exports.RESUMPTION = exports.PSK_ID_HASH = exports.PATH = exports.NONCE = exports.NODE = exports.MEMBERSHIP = exports.MEMBER = exports.MLS10 = exports.KEY = exports.INIT = exports.INFO_HASH = exports.HPKE = exports.HANDSHAKE = exports.EXTERNAL = exports.EXPORTER = exports.EXP = exports.EPOCH = exports.ENCRYPTION = exports.EAE_PRK = exports.DKP_PRK = exports.CONFIRM = exports.CANDIDATE = exports.BASE_NONCE = exports.AUTHENTICATION = exports.APPLICATION = exports.EMPTY_BYTE_ARRAY = void 0;
 // various constants
-const util_1 = require("./util");
-exports.EMPTY_BYTE_ARRAY = new Uint8Array(0);
+import { stringToUint8Array } from "./util";
+export const EMPTY_BYTE_ARRAY = new Uint8Array(0);
 // Uint8Array versions of strings
-exports.APPLICATION = (0, util_1.stringToUint8Array)("application");
-exports.AUTHENTICATION = (0, util_1.stringToUint8Array)("authentication");
-exports.BASE_NONCE = (0, util_1.stringToUint8Array)("base_nonce");
-exports.CANDIDATE = (0, util_1.stringToUint8Array)("candidate");
-exports.CONFIRM = (0, util_1.stringToUint8Array)("confirm");
-exports.DKP_PRK = (0, util_1.stringToUint8Array)("dkp_prk");
-exports.EAE_PRK = (0, util_1.stringToUint8Array)("eae_prk");
-exports.ENCRYPTION = (0, util_1.stringToUint8Array)("encryption");
-exports.EPOCH = (0, util_1.stringToUint8Array)("epoch");
-exports.EXP = (0, util_1.stringToUint8Array)("exp");
-exports.EXPORTER = (0, util_1.stringToUint8Array)("exporter");
-exports.EXTERNAL = (0, util_1.stringToUint8Array)("external");
-exports.HANDSHAKE = (0, util_1.stringToUint8Array)("handshake");
-exports.HPKE = (0, util_1.stringToUint8Array)("HPKE");
-exports.INFO_HASH = (0, util_1.stringToUint8Array)("info_hash");
-exports.INIT = (0, util_1.stringToUint8Array)("init");
-exports.KEY = (0, util_1.stringToUint8Array)("key");
-exports.MLS10 = (0, util_1.stringToUint8Array)("mls10 ");
-exports.MEMBER = (0, util_1.stringToUint8Array)("member");
-exports.MEMBERSHIP = (0, util_1.stringToUint8Array)("membership");
-exports.NODE = (0, util_1.stringToUint8Array)("node");
-exports.NONCE = (0, util_1.stringToUint8Array)("nonce");
-exports.PATH = (0, util_1.stringToUint8Array)("path");
-exports.PSK_ID_HASH = (0, util_1.stringToUint8Array)("psk_id_hash");
-exports.RESUMPTION = (0, util_1.stringToUint8Array)("resumption");
-exports.SEC = (0, util_1.stringToUint8Array)("sec");
-exports.SECRET = (0, util_1.stringToUint8Array)("secret");
-exports.SENDER_DATA = (0, util_1.stringToUint8Array)("sender data");
-exports.SHARED_SECRET = (0, util_1.stringToUint8Array)("shared_secret");
-exports.SK = (0, util_1.stringToUint8Array)("sk");
-exports.TREE = (0, util_1.stringToUint8Array)("tree");
-exports.WELCOME = (0, util_1.stringToUint8Array)("welcome");
+export const APPLICATION = stringToUint8Array("application");
+export const AUTHENTICATION = stringToUint8Array("authentication");
+export const BASE_NONCE = stringToUint8Array("base_nonce");
+export const CANDIDATE = stringToUint8Array("candidate");
+export const CONFIRM = stringToUint8Array("confirm");
+export const DKP_PRK = stringToUint8Array("dkp_prk");
+export const EAE_PRK = stringToUint8Array("eae_prk");
+export const ENCRYPTION = stringToUint8Array("encryption");
+export const EPOCH = stringToUint8Array("epoch");
+export const EXP = stringToUint8Array("exp");
+export const EXPORTER = stringToUint8Array("exporter");
+export const EXTERNAL = stringToUint8Array("external");
+export const HANDSHAKE = stringToUint8Array("handshake");
+export const HPKE = stringToUint8Array("HPKE");
+export const INFO_HASH = stringToUint8Array("info_hash");
+export const INIT = stringToUint8Array("init");
+export const KEY = stringToUint8Array("key");
+export const MLS10 = stringToUint8Array("mls10 ");
+export const MEMBER = stringToUint8Array("member");
+export const MEMBERSHIP = stringToUint8Array("membership");
+export const NODE = stringToUint8Array("node");
+export const NONCE = stringToUint8Array("nonce");
+export const PATH = stringToUint8Array("path");
+export const PSK_ID_HASH = stringToUint8Array("psk_id_hash");
+export const RESUMPTION = stringToUint8Array("resumption");
+export const SEC = stringToUint8Array("sec");
+export const SECRET = stringToUint8Array("secret");
+export const SENDER_DATA = stringToUint8Array("sender data");
+export const SHARED_SECRET = stringToUint8Array("shared_secret");
+export const SK = stringToUint8Array("sk");
+export const TREE = stringToUint8Array("tree");
+export const WELCOME = stringToUint8Array("welcome");
 // uint16
-var ExtensionType;
+export var ExtensionType;
 (function (ExtensionType) {
     ExtensionType[ExtensionType["Capabilities"] = 1] = "Capabilities";
     ExtensionType[ExtensionType["Lifetime"] = 2] = "Lifetime";
@@ -61,15 +58,15 @@ var ExtensionType;
     ExtensionType[ExtensionType["ParentHash"] = 4] = "ParentHash";
     ExtensionType[ExtensionType["RatchetTree"] = 5] = "RatchetTree";
     ExtensionType[ExtensionType["Generation"] = 65280] = "Generation";
-})(ExtensionType = exports.ExtensionType || (exports.ExtensionType = {}));
+})(ExtensionType || (ExtensionType = {}));
 // uint16
-var CredentialType;
+export var CredentialType;
 (function (CredentialType) {
     CredentialType[CredentialType["Basic"] = 1] = "Basic";
     CredentialType[CredentialType["X509"] = 2] = "X509";
-})(CredentialType = exports.CredentialType || (exports.CredentialType = {}));
+})(CredentialType || (CredentialType = {}));
 // See RFC 8446 and the IANA TLS SignatureScheme registry
-var SignatureScheme;
+export var SignatureScheme;
 (function (SignatureScheme) {
     SignatureScheme[SignatureScheme["rsa_pkcs1_sha256"] = 1025] = "rsa_pkcs1_sha256";
     SignatureScheme[SignatureScheme["rsa_pkcs1_sha384"] = 1281] = "rsa_pkcs1_sha384";
@@ -92,31 +89,31 @@ var SignatureScheme;
     /* Legacy algorithms */
     SignatureScheme[SignatureScheme["rsa_pkcs1_sha1"] = 513] = "rsa_pkcs1_sha1";
     SignatureScheme[SignatureScheme["ecdsa_sha1"] = 515] = "ecdsa_sha1";
-})(SignatureScheme = exports.SignatureScheme || (exports.SignatureScheme = {}));
+})(SignatureScheme || (SignatureScheme = {}));
 // uint8
-var ProtocolVersion;
+export var ProtocolVersion;
 (function (ProtocolVersion) {
     ProtocolVersion[ProtocolVersion["Reserved"] = 0] = "Reserved";
     ProtocolVersion[ProtocolVersion["Mls10"] = 1] = "Mls10";
-})(ProtocolVersion = exports.ProtocolVersion || (exports.ProtocolVersion = {}));
+})(ProtocolVersion || (ProtocolVersion = {}));
 // uint8
-var ContentType;
+export var ContentType;
 (function (ContentType) {
     ContentType[ContentType["Reserved"] = 0] = "Reserved";
     ContentType[ContentType["Application"] = 1] = "Application";
     ContentType[ContentType["Proposal"] = 2] = "Proposal";
     ContentType[ContentType["Commit"] = 3] = "Commit";
-})(ContentType = exports.ContentType || (exports.ContentType = {}));
+})(ContentType || (ContentType = {}));
 // uint8
-var SenderType;
+export var SenderType;
 (function (SenderType) {
     SenderType[SenderType["Reserved"] = 0] = "Reserved";
     SenderType[SenderType["Member"] = 1] = "Member";
     SenderType[SenderType["Preconfigured"] = 2] = "Preconfigured";
     SenderType[SenderType["NewMember"] = 3] = "NewMember";
-})(SenderType = exports.SenderType || (exports.SenderType = {}));
+})(SenderType || (SenderType = {}));
 // uint8
-var ProposalType;
+export var ProposalType;
 (function (ProposalType) {
     ProposalType[ProposalType["Reserved"] = 0] = "Reserved";
     ProposalType[ProposalType["Add"] = 1] = "Add";
@@ -125,19 +122,19 @@ var ProposalType;
     ProposalType[ProposalType["Psk"] = 4] = "Psk";
     ProposalType[ProposalType["Reinit"] = 5] = "Reinit";
     ProposalType[ProposalType["ExternalInit"] = 6] = "ExternalInit";
-})(ProposalType = exports.ProposalType || (exports.ProposalType = {}));
+})(ProposalType || (ProposalType = {}));
 // uint8
-var ProposalOrRefType;
+export var ProposalOrRefType;
 (function (ProposalOrRefType) {
     ProposalOrRefType[ProposalOrRefType["Reserved"] = 0] = "Reserved";
     ProposalOrRefType[ProposalOrRefType["Proposal"] = 1] = "Proposal";
     ProposalOrRefType[ProposalOrRefType["Reference"] = 2] = "Reference";
-})(ProposalOrRefType = exports.ProposalOrRefType || (exports.ProposalOrRefType = {}));
+})(ProposalOrRefType || (ProposalOrRefType = {}));
 // uint8
-var NodeType;
+export var NodeType;
 (function (NodeType) {
     NodeType[NodeType["Reserved"] = 0] = "Reserved";
     NodeType[NodeType["Leaf"] = 1] = "Leaf";
     NodeType[NodeType["Parent"] = 2] = "Parent";
-})(NodeType = exports.NodeType || (exports.NodeType = {}));
+})(NodeType || (NodeType = {}));
 //# sourceMappingURL=constants.js.map

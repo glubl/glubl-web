@@ -2,9 +2,7 @@ import { Uint8ArrayMap } from "./util";
 import { Tree } from "./lbbtree";
 import { RatchetTree, KeyPackage } from "./keypackage";
 import { KEMPrivateKey, KEMPublicKey } from "./hpke/base";
-// import { CipherSuite } from "./ciphersuite";
-/// <reference path="./ciphersuite.ts" />.
-
+import { CipherSuite } from "./ciphersuite";
 import { Credential } from "./credential";
 import { UpdatePath, Proposal } from "./message";
 import { GroupContext } from "./group";

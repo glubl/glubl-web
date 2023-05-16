@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 The Matrix.org Foundation C.I.C.
 
@@ -14,52 +13,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.KeyPackage = exports.Generation = exports.RatchetTree = exports.ParentNode = exports.ParentHash = exports.Capabilities = exports.Extension = void 0;
 /** Each user has a key package per room, which has the user's credential and an
  * HPKE public key that can be used to encrypt data for that user.
  *
  * https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#key-packages
  */
-const constants_1 = require("./constants");
-const ciphersuite_1 = require("./ciphersuite");
-const credential_1 = require("./credential");
-const tlspl = require("./tlspl");
-class Extension {
+import { EMPTY_BYTE_ARRAY, ExtensionType, NodeType } from "./constants";
+import { cipherSuiteById } from "./ciphersuite";
+import { Credential } from "./credential";
+import * as tlspl from "./tlspl";
+export class Extension {
+    extensionType;
     constructor(extensionType) {
         this.extensionType = extensionType;
     }
     static decode(buffer, offset) {
         const [[extensionType, extensionData], offset1] = tlspl.decode([tlspl.decodeUint8, tlspl.decodeVariableOpaque(2)], buffer, offset);
         switch (extensionType) {
-            case constants_1.ExtensionType.Capabilities:
+            case ExtensionType.Capabilities:
                 {
                     // eslint-disable-next-line comma-dangle, array-bracket-spacing
                     const [extension,] = Capabilities.decode(extensionData);
                     return [extension, offset1];
                 }
-            case constants_1.ExtensionType.RatchetTree:
+            case ExtensionType.RatchetTree:
                 {
                     // eslint-disable-next-line comma-dangle, array-bracket-spacing
                     const [extension,] = RatchetTree.decode(extensionData);
                     return [extension, offset1];
                 }
-            case constants_1.ExtensionType.ParentHash:
+            case ExtensionType.ParentHash:
                 {
                     // eslint-disable-next-line comma-dangle, array-bracket-spacing
                     const [extension,] = ParentHash.decode(extensionData);
                     return [extension, offset1];
                 }
-            case constants_1.ExtensionType.Generation:
+            case ExtensionType.Generation:
                 {
                     // eslint-disable-next-line comma-dangle, array-bracket-spacing
                     const [extension,] = Generation.decode(extensionData);
@@ -76,11 +65,13 @@ class Extension {
         ]);
     }
 }
-exports.Extension = Extension;
 // https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#client-capabilities
-class Capabilities extends Extension {
+export class Capabilities extends Extension {
+    versions;
+    ciphersuites;
+    extensions;
     constructor(versions, ciphersuites, extensions) {
-        super(constants_1.ExtensionType.Capabilities);
+        super(ExtensionType.Capabilities);
         this.versions = versions;
         this.ciphersuites = ciphersuites;
         this.extensions = extensions;
@@ -99,11 +90,11 @@ class Capabilities extends Extension {
         return [new Capabilities(versions, ciphersuites, extensions), offset1];
     }
 }
-exports.Capabilities = Capabilities;
 // https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#parent-hash
-class ParentHash extends Extension {
+export class ParentHash extends Extension {
+    parentHash;
     constructor(parentHash) {
-        super(constants_1.ExtensionType.ParentHash);
+        super(ExtensionType.ParentHash);
         this.parentHash = parentHash;
     }
     get extensionData() {
@@ -116,20 +107,21 @@ class ParentHash extends Extension {
         return [new ParentHash(parentHash), offset1];
     }
 }
-exports.ParentHash = ParentHash;
-class ParentNode {
+export class ParentNode {
+    publicKey;
+    unmergedLeaves;
+    parentHash;
+    hpkeKey;
     constructor(publicKey, unmergedLeaves, parentHash) {
         this.publicKey = publicKey;
         this.unmergedLeaves = unmergedLeaves;
         this.parentHash = parentHash;
     }
-    getHpkeKey(cipherSuite) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.hpkeKey) {
-                this.hpkeKey = yield cipherSuite.hpke.kem.deserializePublic(this.publicKey);
-            }
-            return this.hpkeKey;
-        });
+    async getHpkeKey(cipherSuite) {
+        if (!this.hpkeKey) {
+            this.hpkeKey = await cipherSuite.hpke.kem.deserializePublic(this.publicKey);
+        }
+        return this.hpkeKey;
     }
     static decode(buffer, offset) {
         const [[publicKey, unmergedLeaves, parentHash], offset1] = tlspl.decode([
@@ -143,26 +135,26 @@ class ParentNode {
         return tlspl.struct([
             tlspl.variableOpaque(this.publicKey, 2),
             tlspl.vector(this.unmergedLeaves.map(tlspl.uint32), 4),
-            tlspl.variableOpaque(this.parentHash || constants_1.EMPTY_BYTE_ARRAY /* FIXME: ??? */, 1),
+            tlspl.variableOpaque(this.parentHash || EMPTY_BYTE_ARRAY /* FIXME: ??? */, 1),
         ]);
     }
 }
-exports.ParentNode = ParentNode;
 // https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#ratchet-tree-extension
 function decodeRatchetTreeNode(buffer, offset) {
     const [[nodeType], offset1] = tlspl.decode([tlspl.decodeUint8], buffer, offset);
     switch (nodeType) {
-        case constants_1.NodeType.Leaf:
+        case NodeType.Leaf:
             return KeyPackage.decode(buffer, offset1);
-        case constants_1.NodeType.Parent:
+        case NodeType.Parent:
             return ParentNode.decode(buffer, offset1);
         default:
             throw new Error("Invalid node type");
     }
 }
-class RatchetTree extends Extension {
+export class RatchetTree extends Extension {
+    nodes;
     constructor(nodes) {
-        super(constants_1.ExtensionType.RatchetTree);
+        super(ExtensionType.RatchetTree);
         this.nodes = nodes;
     }
     get extensionData() {
@@ -174,7 +166,7 @@ class RatchetTree extends Extension {
                 else {
                     return tlspl.struct([
                         tlspl.uint8(1),
-                        tlspl.uint8(node instanceof KeyPackage ? constants_1.NodeType.Leaf : constants_1.NodeType.Parent),
+                        tlspl.uint8(node instanceof KeyPackage ? NodeType.Leaf : NodeType.Parent),
                         node.encoder,
                     ]);
                 }
@@ -186,11 +178,11 @@ class RatchetTree extends Extension {
         return [new RatchetTree(nodes), offset1];
     }
 }
-exports.RatchetTree = RatchetTree;
 // FIXME: more extensions
-class Generation extends Extension {
+export class Generation extends Extension {
+    generation;
     constructor(generation) {
-        super(constants_1.ExtensionType.Generation);
+        super(ExtensionType.Generation);
         this.generation = generation;
     }
     get extensionData() {
@@ -203,15 +195,26 @@ class Generation extends Extension {
         return [new Generation(generation), offset1];
     }
 }
-exports.Generation = Generation;
 class UnknownExtension extends Extension {
+    extensionType;
+    extensionData;
     constructor(extensionType, extensionData) {
         super(extensionType);
         this.extensionType = extensionType;
         this.extensionData = extensionData;
     }
 }
-class KeyPackage {
+export class KeyPackage {
+    version;
+    cipherSuite;
+    hpkeInitKey;
+    credential;
+    extensions;
+    unsignedEncoding;
+    signature;
+    signingKey;
+    hpkeKey;
+    hashCache;
     constructor(version, cipherSuite, hpkeInitKey, credential, extensions, unsignedEncoding, signature, signingKey) {
         this.version = version;
         this.cipherSuite = cipherSuite;
@@ -222,64 +225,56 @@ class KeyPackage {
         this.signature = signature;
         this.signingKey = signingKey;
     }
-    static create(version, cipherSuite, hpkeInitKey, credential, extensions, signingKey) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const unsignedEncoding = tlspl.encode([
-                tlspl.uint8(version),
-                tlspl.uint16(cipherSuite.id),
-                tlspl.variableOpaque(hpkeInitKey, 2),
-                credential.encoder,
-                tlspl.vector(extensions.map(ext => ext.encoder), 4),
-            ]);
-            const signature = yield signingKey.sign(unsignedEncoding);
-            return new KeyPackage(version, cipherSuite, hpkeInitKey, credential, extensions, unsignedEncoding, signature, signingKey);
-        });
+    static async create(version, cipherSuite, hpkeInitKey, credential, extensions, signingKey) {
+        const unsignedEncoding = tlspl.encode([
+            tlspl.uint8(version),
+            tlspl.uint16(cipherSuite.id),
+            tlspl.variableOpaque(hpkeInitKey, 2),
+            credential.encoder,
+            tlspl.vector(extensions.map(ext => ext.encoder), 4),
+        ]);
+        const signature = await signingKey.sign(unsignedEncoding);
+        return new KeyPackage(version, cipherSuite, hpkeInitKey, credential, extensions, unsignedEncoding, signature, signingKey);
     }
     checkSignature() {
         return this.credential.verify(this.unsignedEncoding, this.signature);
     }
-    getHpkeKey() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.hpkeKey) {
-                this.hpkeKey = yield this.cipherSuite.hpke.kem.deserializePublic(this.hpkeInitKey);
-            }
-            return this.hpkeKey;
-        });
+    async getHpkeKey() {
+        if (!this.hpkeKey) {
+            this.hpkeKey = await this.cipherSuite.hpke.kem.deserializePublic(this.hpkeInitKey);
+        }
+        return this.hpkeKey;
     }
-    addExtension(extension) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.signingKey) {
-                throw new Error("Cannot change extensions without a signing key");
-            }
-            this.extensions.push(extension);
-            this.unsignedEncoding = tlspl.encode([
-                tlspl.uint8(this.version),
-                tlspl.uint16(this.cipherSuite.id),
-                tlspl.variableOpaque(this.hpkeInitKey, 2),
-                this.credential.encoder,
-                tlspl.vector(this.extensions.map(ext => ext.encoder), 4),
-            ]);
-            this.signature = yield this.signingKey.sign(this.unsignedEncoding);
-        });
+    async addExtension(extension) {
+        if (!this.signingKey) {
+            throw new Error("Cannot change extensions without a signing key");
+        }
+        this.extensions.push(extension);
+        this.unsignedEncoding = tlspl.encode([
+            tlspl.uint8(this.version),
+            tlspl.uint16(this.cipherSuite.id),
+            tlspl.variableOpaque(this.hpkeInitKey, 2),
+            this.credential.encoder,
+            tlspl.vector(this.extensions.map(ext => ext.encoder), 4),
+        ]);
+        this.signature = await this.signingKey.sign(this.unsignedEncoding);
     }
-    hash() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.hashCache) {
-                const encoded = tlspl.encode([this.encoder]);
-                this.hashCache = yield this.cipherSuite.hash.hash(encoded);
-            }
-            return this.hashCache;
-        });
+    async hash() {
+        if (!this.hashCache) {
+            const encoded = tlspl.encode([this.encoder]);
+            this.hashCache = await this.cipherSuite.hash.hash(encoded);
+        }
+        return this.hashCache;
     }
     static decode(buffer, offset) {
         const [[version, cipherSuiteId, hpkeInitKey, credential, extensions], offset1,] = tlspl.decode([
             tlspl.decodeUint8,
             tlspl.decodeUint16,
             tlspl.decodeVariableOpaque(2),
-            credential_1.Credential.decode,
+            Credential.decode,
             tlspl.decodeVector(Extension.decode, 4),
         ], buffer, offset);
-        const cipherSuite = ciphersuite_1.cipherSuiteById[cipherSuiteId];
+        const cipherSuite = cipherSuiteById[cipherSuiteId];
         if (!cipherSuite) {
             throw new Error("Unknown ciphersuite");
         }
@@ -300,5 +295,4 @@ class KeyPackage {
         ]);
     }
 }
-exports.KeyPackage = KeyPackage;
 //# sourceMappingURL=keypackage.js.map
