@@ -1,17 +1,23 @@
 import type { ISEAPair } from "gun"
 import { HashFail, InvalidPairError } from "./errors"
-import { goto } from "$app/navigation"
 import { gunStore } from "./stores"
 import { get } from "svelte/store"
 import { getGun } from "./db"
 import SEA from "gun/sea"
 
 import * as stores from "./stores"
-import * as db from "./db"
 import * as friends from "./friends"
 
 import { uniqueNamesGenerator, adjectives, colors, animals, type Config } from 'unique-names-generator';
-import { getUserSpacePath } from "./utils"
+import { getUserSpacePath, makeKeyPackage, uint8ArraytoBase64 } from "./utils"
+
+import * as tlspl from "@src/lib/mls/tlspl"
+import type { KeyPackage } from "@src/lib/mls/keypackage"
+import type { BasicCredential } from "@src/lib/mls/credential"
+import type { SigningPrivateKey } from "@src/lib/mls/signatures"
+import type { KEMPrivateKey } from "@src/lib/mls/hpke/base"
+
+
 const randNameConfig: Config = {
   dictionaries: [adjectives, colors, animals],
   separator: ' ',
@@ -74,11 +80,13 @@ const auth = {
     user.auth(pair)
 
     const stringPair : string = JSON.stringify(pair).replace(/\%22/g,'"')
+    const keyPackage = await this.createAndSaveKeyPackage(username, pair)
     const userProfile: Profile = {
       picture: '',
       username: username,
       pub: pair.pub, 
-      epub: pair.epub
+      epub: pair.epub,
+      keyPackage: keyPackage
     }
     const userProfileEnc = await SEA.encrypt(userProfile, pair)
     const mySpacePath = await getUserSpacePath(pair.pub, pair.epriv)
@@ -139,14 +147,24 @@ const auth = {
     if (profileEnc && (profileEnc as Profile).pub) {
       console.warn("Profile is not encrypted, encrypting...")
       profile = profileEnc as Profile
+      if (!profile.keyPackage) {
+        profile.keyPackage = await this.createAndSaveKeyPackage(profile.username, pair)
+      }
       user.get("profile").put(await SEA.encrypt(profile, pair))
     } else {
       profile = await SEA.decrypt(profileEnc as string, pair)
+      if (profile && !profile.keyPackage) {
+        profile.keyPackage = await this.createAndSaveKeyPackage(profile.username, pair)
+        const userProfileEnc = await SEA.encrypt(profile, pair);
+        user.put({ profile: userProfileEnc });
+      } 
     }
     if (!profile) {
       console.warn("Profile not set, creating a new one...")
       profile = this.createDefaultProfile()
       // user.get("profile").put(await SEA.encrypt(profile, pair))
+      const userProfileEnc = await SEA.encrypt(profile, pair);
+      user.put({profile: userProfileEnc})
     }
     return profile
   },
@@ -168,15 +186,47 @@ const auth = {
     })
   },
 
+  async getUserProfile() {
+    let {user} = getGun()
+    return await user.get('profile').then()
+  },
+
   defaultProfiles: <{[pub: string]: Profile}>{},
-  createDefaultProfile(): Profile {
+  async createDefaultProfile(): Profile {
     let {pair} = getGun()
+    const username: string = uniqueNamesGenerator({...randNameConfig, seed: pair.pub}).toTitleCase()
+    const keyPackageBase64 = await this.createAndSaveKeyPackage(username, pair) 
     return (this.defaultProfiles[pair.pub] ??= {
       pub: pair.pub, 
       epub: pair.epub, 
       picture: "",
-      username: uniqueNamesGenerator({...randNameConfig, seed: pair.pub}).toTitleCase()
+      username: username,
+      keyPackage: keyPackageBase64
     })
+  },
+
+  async createAndSaveKeyPackage(username: string, pair: ISEAPair) {
+    let {user} = getGun()
+    const [signingPrivKey, hpkePrivKey, credential, keyPackage] =
+      await makeKeyPackage(`${username}:${pair.pub}`)
+
+    const [signingPrivKeyEncoded, hpkePrivKeyEncoded, credentialEncoded, keyPackageEncoded]: Uint8Array[] = [
+      await(signingPrivKey as SigningPrivateKey).serialize(),
+      await(hpkePrivKey as KEMPrivateKey).serialize(),
+      tlspl.encode([(credential as BasicCredential).credentialEncoder]),
+      tlspl.encode([(keyPackage as KeyPackage).encoder]),
+    ]
+    const [signingPrivKeyBase64, hpkePrivKeyBase64, credentialBase64, keyPackageBase64] = [
+      uint8ArraytoBase64(signingPrivKeyEncoded),
+      uint8ArraytoBase64(hpkePrivKeyEncoded),
+      uint8ArraytoBase64(credentialEncoded),
+      uint8ArraytoBase64(keyPackageEncoded),
+    ]
+    user
+      .put({signingPrivKey: signingPrivKeyBase64})
+      .put({hpkePrivKey: hpkePrivKeyBase64})
+      .put({credential: credentialBase64})
+    return keyPackageBase64
   },
 
   // TODO: Use shared pair instead

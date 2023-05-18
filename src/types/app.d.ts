@@ -1,6 +1,5 @@
 import type { IconSource } from "@steeze-ui/heroicons/types";
-import { GunPeer, IGunInstance, ISEA, ISEAPair, _GunRoot, type IGunUserInstance } from "gun"
-import * as gun from "gun"
+import { IGunInstance, ISEA } from "gun"
 import { ComponentType } from "svelte";
 
 declare global {
@@ -30,7 +29,8 @@ declare global {
     pub: string
     epub: string
     picture: string
-    username: string
+    username: string,
+    keyPackage: string,
   }
 
   type FriendProfile = Profile & {
@@ -87,48 +87,12 @@ declare global {
     type: "top" | "bottom"
   }
   
-  
-  declare type Profile = {
-    pub: string
-    epub: string
-    picture: string
-    username: string
-  }
-  
-  declare type FriendProfile = Profile & {
-    space: string
-  }
-  
   declare type FriendRequest = {
     pub: string
     epub: string
     profile: Profile
   }
   
-  declare type ChatMessage = {
-    msg: string
-    ts: number
-    by: FriendProfile
-    to: FriendProfile
-  }
-  
-  declare type ChatMessageGun = {
-    msg: string
-    ts: number
-    by: string
-    to: string
-  }
-  
-  declare interface Window {
-    SEA: ISEA;
-    gun: IGunInstance<any>
-  }
-  
-  
-  interface String {
-    toTitleCase(): string;
-  }
-
   export interface RTCPeerConnection {
     channels: {[name: string]: RTCDataChannel}
   }
