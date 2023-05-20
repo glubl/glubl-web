@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import {
     UserGroup,
     GlobeAlt,
@@ -7,18 +6,16 @@
     User,
     Cog8Tooth,
     ArrowLeft,
-    ArrowRightCircle,
     ArrowRightOnRectangle,
   } from "@steeze-ui/heroicons";
-  import type { IconSource } from "@steeze-ui/heroicons/types";
   import { Icon } from "@steeze-ui/svelte-icon";
-  import type { SvelteComponent } from "svelte";
 
-  import ChatScreen from "$lib/components/ChatScreen.svelte";
   import MenuButton from "$lib/components/MenuButton.svelte";
   import { menuOpen } from "@src/lib/stores";
   import ChatMenu from "@src/lib/components/ChatMenu.svelte";
+  import GroupMenu from "@src/lib/components/GroupMenu.svelte";
   import ChatParentScreen from "@src/lib/components/ChatParentScreen.svelte";
+  import GroupParentScreen from "@src/lib/components/GroupParentScreen.svelte";
   import auth from "@src/lib/auth";
 
   function onMenuClick() {
@@ -43,8 +40,8 @@
     {
       name: "groups",
       icon: UserGroup,
-      menuComponent: undefined,
-      contentComponent: undefined,
+      menuComponent: GroupMenu,
+      contentComponent: GroupParentScreen,
       type: "top",
     },
     {
