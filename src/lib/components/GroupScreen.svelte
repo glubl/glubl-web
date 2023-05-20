@@ -6,16 +6,18 @@
   import ManageGroup from "./ManageGroup.svelte"
   import { Icon } from "@steeze-ui/svelte-icon"
   import { ChevronDown, ChevronUp } from "@steeze-ui/heroicons"
+  import { onMount } from "svelte";
 
   export let group: Partial<Group> | undefined
-  let groupName: string | "No name" = group?.groupId.reduce((word, curr)=>word + String.fromCharCode(curr), "") || "No name"
-  let groups: { [groupId: string]: Partial<Group> } = dummyGroups
+  let groupName: string | undefined
   let selectedGroup: Partial<Group> | undefined
   let manageOpen: boolean | undefined
-  $: groupName
-  $: manageOpenStore.subscribe(v => manageOpen = v)
-  $: screenStore.selectedGroup.subscribe(v => selectedGroup = v)
-  $: screenStore.selectedGroupMenu.subscribe(v => groupName = v || "No name")
+  $: groupName = group?.groupId?.reduce((word, curr)=>word + String.fromCharCode(curr), "")
+  $: selectedGroup
+  onMount(() => {
+    manageOpenStore.subscribe(v => manageOpen = v)
+    screenStore.selectedGroup.subscribe(v => selectedGroup = v)
+  })
 </script>
 
 <div id="group-chat-screen" class="flex flex-col h-screen justify-start flex-1 w-full relative">

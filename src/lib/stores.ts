@@ -5,7 +5,7 @@ import type { Group } from "./mls/group"
 
 export const screenStore = {
   selectedChatMenu: writable<string>(),
-  selectedGroupMenu: writable<string | undefined>(),
+  selectedGroupMenu: writable<string>(),
   selectedFriendProfile: writable<FriendProfile | undefined>(),
   selectedGroup: writable<Partial<Group> | undefined>(),
   currentActiveCall: writable<boolean>(true)
