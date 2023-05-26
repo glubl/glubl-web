@@ -5,10 +5,10 @@
   import GroupScreen from "./GroupScreen.svelte";
   import dummyGroups from "../mock/groups";
 
-  let selectedMenu: string | undefined;
+  let selectedMenu: string;
   let groups: { [id: string]: any } = dummyGroups;
   let group: any | undefined;
-  $: selectedMenu;
+  $: selectedMenu = (Object.entries(groups)[0][1]).groupId?.reduce((word, curr)=>word + String.fromCharCode(curr), "") || ":new:";
 
   onMount(async () => {
     screenStore.selectedGroupMenu.subscribe((v) => (selectedMenu = v));
@@ -18,7 +18,7 @@
 </script>
 
 <div class="w-full h-full">
-  {#if selectedMenu === ":new:" && !group}
+  {#if selectedMenu === ":new:"}
     <NewGroup />
   {:else}
     <GroupScreen {group} />

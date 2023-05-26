@@ -4,7 +4,7 @@ import { CallController } from "./call"
 
 export const screenStore = {
   selectedChatMenu: writable<string>(),
-  selectedGroupMenu: writable<string | undefined>(),
+  selectedGroupMenu: writable<string>(),
   selectedFriendProfile: writable<FriendProfile | undefined>(),
   selectedGroup: writable<any | undefined>(),
   currentActiveCall: writable<boolean>(true)
