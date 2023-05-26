@@ -7,14 +7,20 @@ import { Group } from "@src/lib/mls/group"
 import { KeyPackage } from "@src/lib/mls/keypackage"
 import { ProfileNotSet } from "./errors"
 import { ProtocolVersion } from "@src/lib/mls/constants"
+import { Ed25519 as EdDsa } from "@src/lib/mls/signatures"
 import * as tlspl from "@src/lib/mls/tlspl"
 import type { BasicCredential } from "@src/lib/mls/credential"
 import type { KEMPrivateKey } from "@src/lib/mls/hpke/base"
-import type { MLSPlaintext } from "@src/lib/mls/message"
+import type { Add, MLSPlaintext, Remove } from "@src/lib/mls/message"
 import type { SigningPrivateKey } from "@src/lib/mls/signatures"
 import type { Welcome } from "@src/lib/mls/welcome"
+import { cloneDeep } from "lodash"
 
 
+/**
+ * Create new group
+ * The outputs must then be encoded and saved in group space
+ */
 export async function create(name: string, members: FriendProfile[]): Promise<[Group, MLSPlaintext, Welcome]> {
   let {user} = getGun()
   let keyBase64s: string[] = members.map((profile) => profile.keyPackage).filter((keyBase64) => !!keyBase64 )
@@ -36,9 +42,9 @@ export async function create(name: string, members: FriendProfile[]): Promise<[G
   const keyPackage = tlspl.decode([KeyPackage.decode], keyPackageEncoded)[0][0]
   const kem = keyPackage.cipherSuite.hpke.kem
   const credential: BasicCredential = keyPackage.credential
-  const signingPrivKey: SigningPrivateKey = await kem.deserializePrivate?.(hpkePrivKeyEncoded),
+  const signingPrivKey: SigningPrivateKey = await kem.deserializePrivate?.(hpkePrivKeyEncoded)
 
-  const [group, plaintext, welcome] = await Group.createNew(
+  const [group, mlsPlaintext, welcome]: [Group, MLSPlaintext, Welcome] = await Group.createNew(
     ProtocolVersion.Mls10,
     cipherSuite,
     stringToUint8Array(name),
@@ -47,10 +53,12 @@ export async function create(name: string, members: FriendProfile[]): Promise<[G
     keyPackages
   )
 
-  return [group, plaintext, welcome]
+  return [group, mlsPlaintext, welcome]
 }
 
-
+/**
+ * Create group from invite
+ */
 export async function createWelcome(welcome: Welcome): Promise<[string, Group] | undefined> {
   let { user } = getGun()
   const profile: Profile = await auth.getProfile().then()
@@ -77,3 +85,38 @@ export async function createWelcome(welcome: Welcome): Promise<[string, Group] |
   }
 }
 
+export async function createGroupFromInvite() {
+}
+
+export async function createGroupSendInvite(name: string, members: FriendProfile[]) {
+}
+
+export async function parseMySavedKeys() {
+  let {user} = getGun()
+  const profile : Profile = await auth.getProfile().then()
+  const keyPackageBase64 = profile.keyPackage
+  if (!keyPackageBase64) {
+    console.log(new ProfileNotSet())
+    return {}
+  }
+  const signingPrivKeyBase64 = await user.get('signingPrivKey').then()
+  const hpkePrivKeyBase64 = await user.get('hpkePrivKey').then()
+
+  const [
+    signingPrivKeyEncoded,
+    hpkePrivKeyEncoded,
+    keyPackageEncoded,
+  ]: Uint8Array[] = [
+    base64toUint8Array(signingPrivKeyBase64),
+    base64toUint8Array(hpkePrivKeyBase64),
+    base64toUint8Array(keyPackageBase64),
+  ]
+  const keyPackage = tlspl.decode([KeyPackage.decode], keyPackageEncoded)[0][0]
+  const kem = keyPackage.cipherSuite.hpke.kem
+  const credential: BasicCredential = keyPackage.credential
+  const [signingPrivKey, hpkePrivKey]: any[] = [
+    await EdDsa.deserializePrivate(signingPrivKeyEncoded),
+    await kem.deserializePrivate?.(hpkePrivKeyEncoded),
+  ]
+  return { signingPrivKey, hpkePrivKey, credential, keyPackage }
+}
