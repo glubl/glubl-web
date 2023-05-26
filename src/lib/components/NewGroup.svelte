@@ -12,11 +12,7 @@
   let selectedFriends: { [pub: string]: Option } = {};
   let groupname: string;
   let errorMsg: string = "";
-  let myKeyPackage: KeyPackage;
 
-  function getKeyPackage() {
-    auth.getProfile().then((res) => (myKeyPackage = res["keyPackage"]));
-  }
   function onSubmit() {
     if (!groupname && Object.entries(selectedFriends).length === 0) {
       errorMsg = "Group name cannot be empty.";
@@ -32,7 +28,6 @@
         selectedFriends[key] = { ...value, checked: false };
       }
     });
-    getKeyPackage();
   });
 </script>
 
@@ -95,9 +90,7 @@
       <button
         class="btn btn-primary"
         type="submit"
-        on:click={() => {
-          auth.getProfile().then((res) => console.log(res));
-        }}>Create</button
+        >Create</button
       >
     </form>
   </div>

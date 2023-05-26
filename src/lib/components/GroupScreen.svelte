@@ -3,7 +3,7 @@
   import dummyGroups from "../mock/groups"
   import NavButton from "./NavButton.svelte"
   import { screenStore, manageOpen as manageOpenStore} from "../stores"
-  import ManageGroup from "./ManageGroup.svelte"
+  import GroupManage from "./GroupManage.svelte"
   import { Icon } from "@steeze-ui/svelte-icon"
   import { ChevronDown, ChevronUp } from "@steeze-ui/heroicons"
   import { onMount } from "svelte";
@@ -32,7 +32,7 @@
   </div>
   <div id="contents">
     {#if manageOpen}
-      <ManageGroup />
+      <GroupManage />
       {:else}
       <p class="prose">Empty chat</p>
     {/if}
