@@ -14,12 +14,13 @@
     checked: boolean
     action: "add" | "remove" | undefined
   }
+  export let group: any
   let members: {[pub: string]: Option}
   let friends: {[pub: string]: Option}
   // isRemoving: removing members, not isRemoving: adding members
   let isRemoving: boolean = true
   let isManaging: boolean
-  let groupName: string = "Dinyus"
+  let groupName: string
   let counter: number
   let unsubfriends: Unsubscriber;
   let unsubmembers: Unsubscriber;
@@ -61,6 +62,7 @@
   }
   $: members = {}
   $: friends = {}
+  $: groupName = group?.groupId?.reduce((word, curr)=>word + String.fromCharCode(curr), "")
   onMount(() => {
     unsubmembers = friendsStore.subscribe((v)=>{
       Object.entries(v).map((v: [string, FriendProfile]) => {

@@ -30,7 +30,7 @@
   </div>
   <div id="contents">
     {#if manageOpen}
-      <ManageGroup />
+      <ManageGroup {group}/>
       {:else}
       <p class="prose">Empty chat</p>
     {/if}
