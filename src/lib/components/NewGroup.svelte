@@ -4,7 +4,6 @@
   import { friendsStore } from "@src/lib/stores";
   import { getGun } from "@src/lib/db";
   import NavButton from "@src/lib/components/NavButton.svelte";
-  import type { KeyPackage } from "@src/lib/mls/keypackage";
 
   type Option = FriendProfile & {
     checked: boolean;
@@ -12,11 +11,7 @@
   let selectedFriends: { [pub: string]: Option } = {};
   let groupname: string;
   let errorMsg: string = "";
-  let myKeyPackage: KeyPackage;
 
-  function getKeyPackage() {
-    auth.getProfile().then((res) => (myKeyPackage = res["keyPackage"]));
-  }
   function onSubmit() {
     if (!groupname && Object.entries(selectedFriends).length === 0) {
       errorMsg = "Group name cannot be empty.";
@@ -32,7 +27,6 @@
         selectedFriends[key] = { ...value, checked: false };
       }
     });
-    getKeyPackage();
   });
 </script>
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { Group } from "../mls/group"
   import dummyGroups from "../mock/groups"
   import NavButton from "./NavButton.svelte"
   import { screenStore, manageOpen as manageOpenStore} from "../stores"
@@ -7,10 +6,10 @@
   import { Icon } from "@steeze-ui/svelte-icon"
   import { ChevronDown, ChevronUp } from "@steeze-ui/heroicons"
 
-  export let group: Partial<Group> | undefined
-  let groupName: string | "No name" = group?.groupId.reduce((word, curr)=>word + String.fromCharCode(curr), "") || "No name"
-  let groups: { [groupId: string]: Partial<Group> } = dummyGroups
-  let selectedGroup: Partial<Group> | undefined
+  export let group: any | undefined
+  let groupName: string | "No name" = group?.groupId.reduce((word: string, curr: number)=>word + String.fromCharCode(curr), "") || "No name"
+  let groups: { [groupId: string]: any } = dummyGroups
+  let selectedGroup: any | undefined
   let manageOpen: boolean | undefined
   $: groupName
   $: manageOpenStore.subscribe(v => manageOpen = v)

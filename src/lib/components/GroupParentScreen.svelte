@@ -3,12 +3,11 @@
   import { groupsStore, screenStore } from "../stores";
   import NewGroup from "./NewGroup.svelte";
   import GroupScreen from "./GroupScreen.svelte";
-  import type { Group } from "../mls/group";
   import dummyGroups from "../mock/groups";
 
   let selectedMenu: string | undefined;
-  let groups: { [id: string]: Partial<Group> } = dummyGroups;
-  let group: Partial<Group> | undefined;
+  let groups: { [id: string]: any } = dummyGroups;
+  let group: any | undefined;
   $: selectedMenu;
 
   onMount(async () => {

@@ -3,15 +3,14 @@
   import { Icon } from "@steeze-ui/svelte-icon";
   import { UserGroup, PlusCircle } from "@steeze-ui/heroicons";
   import { onMount } from "svelte";
-  import type { Group } from "../mls/group";
   import dummyGroups from "../mock/groups";
 
-  let groups: { [id: string]: Partial<Group> } = dummyGroups;
+  let groups: { [id: string]: any } = dummyGroups;
   let selectedMenu: string;
   $: groups;
   $: selectedMenu =
     selectedMenu ||
-    (Object.entries(groups)[0][1] || {}).groupId?.reduce((word, curr)=>word + String.fromCharCode(curr), "") ||
+    (Object.entries(groups)[0][1] || {}).groupId?.reduce((word: string, curr: number)=>word + String.fromCharCode(curr), "") ||
     ":new:";
   $: screenStore.selectedGroupMenu.set(selectedMenu);
   onMount(() => {
