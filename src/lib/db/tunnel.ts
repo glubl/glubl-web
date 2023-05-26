@@ -74,7 +74,6 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
 
     connect() {
         this.listen()
-        this.startTime = +new Date()
         setTimeout(() => this.announce(), 50)
     }
     disconnect() {
@@ -103,7 +102,7 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
     }
 
     private putSoul?: string
-    private announce() {
+    announce() {
         _debugger.log("{{announce}}")
         this.gun.get(this.path.announce)
             .get("id")
@@ -148,7 +147,12 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
     }
 
     private listen() {
+        if (this.event) {
+            this.event.off()
+            this.event = undefined
+        }
         _debugger.log("{{listen}}")
+        this.startTime = Gun.state()
         this.gun.get(this.path.listen).get("id").on(async (v, _, meta, event) => {
             this.event = event
             if (meta.put['>'] < this.startTime || v === this.id) return
@@ -173,7 +177,7 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
                         try {
                             peer!.receive(ack.ok)
                         } catch (error) {
-                            console.error(error)
+                            _debugger.error(error)
                         }
                     }
                 }
@@ -183,7 +187,7 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
                     try {
                         callback(m)
                     } catch (error) {
-                        console.error(error)
+                        _debugger.error(error)
                     }
                 }), 
                 '@': '' + meta["#"],                                       
@@ -273,11 +277,13 @@ export class TunnelPeer extends EventEmitter<TunnelPeerEvents> {
         this.on('ping', (t) => t === 'pong' && (this.responsive = true))
     }
     private hc() {
-        if (this.tried > ((this.opt?.Tunnel || {}).maxRetry || 5)) {
+        if (this.tried > ((this.opt?.Tunnel || {}).maxRetry || 3)) {
+            _debugger.log("::dead::")
             this.emit("dead")
             return
         }
         if (!this.responsive) {
+            _debugger.log("::unresponsive::")
             this.emit("unresponsive", ++this.tried)
         }
         this.responsive = false

@@ -49,13 +49,13 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
     private retry: number
     private lastTry = 0
     private leave = false
-    private defer: ReturnType<typeof setTimeout> = 0
+    private defer: ReturnType<typeof setTimeout> = 0 as any
     private lastTried = +new Date
     private waitInc: number
     private maxRetry: number
     private maxWait: number
     private minWait: number
-
+    private manualDc = false;
     private pendingICECandidate: RTCSignal["candidate"][] = []
 
     private RTCPeerConnection: typeof RTCPeerConnection
@@ -128,9 +128,10 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
         })
     }
     async connect() {
-        if (this.retry <= 0) return
+        if (this.retry <= 0 || this.manualDc) return
         _debugger.log("((reconnect))", this.retry, this.wait)
         this.disconnect("bye")
+        this.manualDc = false
         this.emit("send-signal", {hi: this.myId, ts: +new Date})
         _debugger.log("::hi send::")
 
@@ -154,9 +155,12 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
         }
         this.setConnected(false)
         this.hiReceive = false
-        if (reason !== "bye") {
-            _debugger.log("::bye send::")
-            this.emit("send-signal", {ts: +new Date, bye: "bye"})
+        if (reason !== "clear") {
+            this.manualDc = true
+        }
+        if (reason !== "bye" && reason !== "clear") {
+            _debugger.log("::bye send::");
+            this.emit("send-signal", { ts: +new Date(), bye: "bye" });
         }
     }
 
@@ -166,9 +170,7 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
         this.mediaStreams[stream.id] = stream
         for (const track of stream.getTracks()) {
             if (this.pc) {
-                
                 this.tracksRtpSenders[track.id] = this.pc.addTrack(track, stream)
-                console.log(this.tracksRtpSenders[track.id])
             }
         }
     }
@@ -195,12 +197,12 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
         try {
             if (!msg) return
             let { candidate, description, bye, hi } = msg
-            console.log(msg)
 
-            if (bye && (this.isConnected || (+new Date - this.lastTried > (this.wait * this.waitInc)))) {
-                _debugger.log("::bye::")
-                this.disconnect("bye")
-                return
+            if (bye && (this.isConnected || +new Date() - this.lastTried > this.wait * this.waitInc)) {
+                _debugger.log("::bye::");
+                this.manualDc = true
+                this.disconnect("bye");
+                return;
             }
 
             if (hi && !this.hiReceive) {
@@ -325,7 +327,7 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
         _debugger.log("{{create peer}}")
 
         if (this.pc)
-            this.disconnect()
+            this.disconnect("clear")
 
         let pc = this.pc = new (this.RTCPeerConnection)(this.initPeerConnection)
         const ins = this
@@ -340,14 +342,20 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
                 closeCalled = true
                 return
             }
-            ins.disconnect()
-            ins.resetReconnect(true)
-            ins.connect()
+            ins.disconnect("clear")
+            if (!ins.manualDc) {
+                ins.resetReconnect(true);
+            } else {
+                _debugger.log("<<manual dc>>")
+            }
         }
         function onError(this: RTCDataChannel) {
-            ins.disconnect()
-            ins.resetReconnect(true)
-            ins.connect()
+            ins.disconnect("clear");
+            if (!ins.manualDc) {
+                ins.resetReconnect(true);
+            } else {
+                _debugger.log("<<manual dc>>")
+            }
         }
         function onMessage(this: RTCDataChannel, ev: MessageEvent<any>) {
             if (ev.data === 'pong') {

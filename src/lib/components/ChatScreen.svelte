@@ -9,7 +9,7 @@
   import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
   import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { menuOpen, myProfileStore, screenStore } from "../stores";
+  import { friendRTCStore, menuOpen, myProfileStore, screenStore } from "../stores";
   import { getGun } from "../db";
   import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
   import { get, type Unsubscriber } from "svelte/store";
@@ -33,6 +33,11 @@
   let chats: (ChatMessage & { index: number })[];
   let chatData: { [k: string]: ChatMessage } = {};
   let profileUnsub: Unsubscriber | null;
+
+  let isWebRTC = !!$friendRTCStore.get(friend.pub)
+  friendRTCStore.subscribe(v => isWebRTC = v.has(friend.pub))
+
+
   $: onCall = get(screenStore.currentActiveCall);
   const refreshChat = _.debounce(
     () => {
@@ -63,10 +68,8 @@
     if (!_) throw new SharedCreationFail();
     shared = _;
 
+    theirSpacePath = await getUserSpacePath(friend.pub, shared)
     mySpacePath = await getUserSpacePath(pair.pub, shared)
-    mySpace = gun.get("~"+friend.pub)
-      .get("spaces")
-      .get(mySpacePath);
     profileUnsub = myProfileStore.subscribe((v) => {
       if (v) {
         profilePathMap[mySpacePath] = { ...v, space: mySpacePath };
@@ -75,26 +78,47 @@
       }
     });
 
-    theirSpacePath = await getUserSpacePath(friend.pub, shared)
-    theirSpace = user
-      .get("spaces")
-      .get(theirSpacePath)
-
+    
+    theirSpace = gun.get(`~${pair.pub}/${theirSpacePath}/m`)
     theirSpace
-      .get("messages")
       .map()
       .on((v, k, _, e) => {
-        receiveMessage(v, k);
+        var msg: { f: string, d: string }
+        try {
+          msg = JSON.parse(v)
+          if (!msg.f || !msg.d) {
+            console.warn("Invalid msg")
+            return
+          }
+        } catch (error) {
+          console.warn("Can't parse msg")
+          return
+        }
+        receiveMessage(msg, k);
         theirE = e;
       });
 
+    
+    mySpace = gun.get(`~${friend.pub}/${mySpacePath}/m`)
     mySpace
-      .get("messages")
       .map()
       .on((v, k, _, e) => {
-        receiveMessage(v, k);
+        var msg: { f: string, d: string }
+        try {
+          msg = JSON.parse(v)
+          if (!msg.f || !msg.d) {
+            console.warn("Invalid msg")
+            return
+          }
+        } catch (error) {
+          console.warn("Can't parse msg")
+          return
+        }
+        receiveMessage(msg, k);
         myE = e;
       });
+
+    
   }
   $: {
     if (friend) init(friend);
@@ -121,14 +145,13 @@
     reset();
   });
 
-  async function receiveMessage(v: { [k: string]: string }, k: string) {
-    delete v._;
-    const path = k.substring(k.indexOf("|") + 1);
-    const profile = profilePathMap[path];
+  async function receiveMessage(v: { f: string, d: string }, k: string) {
+    const { f, d } = v
+    const profile = profilePathMap[f];
     if (!profile) {
       throw new Error("Unknown chat sender");
     }
-    const enc = await SEA.verify(v.d, profile.pub);
+    const enc = await SEA.verify(d, profile.pub);
     if (!enc) throw new VerifyFail();
     const data = await SEA.decrypt(enc, shared);
     if (!data) throw new DecriptionFail();
@@ -153,9 +176,12 @@
     const msgDataEnc = await SEA.encrypt(msgData, shared);
     const msgDataSig = await SEA.sign(msgDataEnc, pair);
     theirSpace
-      .get("messages")
-      .get(`${time.toISOString()}|${mySpacePath}`)
-      .put({ d: msgDataSig });
+      .put({ 
+        [`${msgData.ts}`]: JSON.stringify({
+          f: mySpacePath,
+          d: msgDataSig
+        })
+      });
 
     messageInput = "";
   }
@@ -251,7 +277,13 @@
       on:click={() => navigator.clipboard.writeText(friend.pub)}
       class="min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5"
     >
-      <code class="truncate max-w-fit">{friend.pub.slice(0, 48)}...</code>
+      <code class="truncate max-w-fit">{friend.pub.slice(0, 12)}...</code>
+    </button>
+    <button
+      id="friendrtc"
+      class={`ml-2 min-w-0 flex items-center justify-center rounded-lg bg-accent h-fit translate-y-[1px] text-sm mt-.5 transition-all ease-in-out duration-300 overflow-hidden ${ isWebRTC ? 'w-16' : 'w-0' }`}
+    >
+      <code class="text-base-300">WebRTC</code>
     </button>
     <div class="flex-1" />
     {#if !onCall}

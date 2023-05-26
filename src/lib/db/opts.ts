@@ -1,12 +1,12 @@
 import type { GunOptions } from "gun"
 
 export const options : GunOptions = {
-  peers: ["https://gun.glubl.io/gun"],
+  peers: ["https://test-gun.glubl.io/gun"] as any,
   file: "global",
 }
 
 export const optionsLocal : GunOptions = {
-  peers: [],
+  peers: [] as any,
   file: "local",
   WebSocket: false,
   ws: false,

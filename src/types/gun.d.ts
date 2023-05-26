@@ -139,6 +139,11 @@ declare module "gun" {
     send: (data: RTCMsg, init?: boolean) => void
   }
 
+  export interface GunHookRTCPeer {
+    peer: GunPeer
+    connected: boolean
+  }
+
   export interface GunHookTunnelCreate {
 
   }
@@ -158,6 +163,9 @@ declare module "gun" {
     on(event: 'rtc-channel', callback: (this: g.IGunHookContext<GunHookRTCChannel>, d: GunHookRTCChannel) => void): void
     on(event: 'rtc-connect', data: GunHookRTCConnect): void
     on(event: 'rtc-connect', callback: (this: g.IGunHookContext<GunHookRTCConnect>, d: GunHookRTCConnect) => void): void
+
+    on(event: 'rtc-peer', data: GunHookRTCPeer): void
+    on(event: 'rtc-peer', callback: (this: g.IGunHookContext<GunHookRTCPeer>, d: GunHookRTCPeer) => void): void
 
     on(event: 'tun-instance', tunnel: Tunnel): void
     on(event: 'tun-instance', callback: (this: g.IGunHookContext<Tunnel>, tun: Tunnel) => void): void

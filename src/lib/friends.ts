@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import { getGun } from "./db";
 import auth from "./auth";
 import type { IGunOnEvent, ISEAPair, _GunRoot } from "gun";
-import { friendsStore } from "./stores";
+import { friendRTCStore, friendsStore } from "./stores";
 import  _ from "lodash";
 import { writable, get } from "svelte/store";
 import { debounceByParam, getUserSpacePath } from "./utils";
@@ -115,6 +115,17 @@ const initiateFriendData = debounceByParam(async(d: string) => {
 export const init = async () => {
   const { gun, user, pair} = getGun()
   const mySpacePath = await getUserSpacePath(pair.pub, pair.epriv)
+  gun._.on("rtc-peer", function (data) {
+    const { peer, connected } = data
+    if (connected) {
+      friendRTCStore.update(v => v.set(peer.id, peer))
+    } else {
+      friendRTCStore.update(v => {
+        v.delete(peer.id)
+        return v
+      })
+    }
+  })
   user.get("friends")
     .on((v, _, __, e) => {
       // console.log("friends-init-ev", v)

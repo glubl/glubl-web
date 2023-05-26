@@ -29,7 +29,7 @@ function sendNTP(peer: GunPeer) {
     //console.log("start-sendntp")
     
     let ntp: NTPResult = {
-      ntp: { t1: Gun.state(), t2: 0, t3: 0, t4: 0 },
+      ntp: { t1: Gun.state() - (Gun.state as any).drift, t2: 0, t3: 0, t4: 0 },
       res: res,
       peer: peer,
       offset: 0,
@@ -68,12 +68,12 @@ function hearNTP(msg: { dam: 'ntp', ntp: NTP }, peer: GunPeer) {
 
   let asServer = false
   if (!msg.ntp.t2 && !msg.ntp.t3) {
-    msg.ntp.t2 = Gun.state()
+    msg.ntp.t2 = Gun.state() - (Gun.state as any).drift
     asServer = true
   }
 
   if (asServer) {
-    msg.ntp.t3 = Gun.state()
+    msg.ntp.t3 = Gun.state() - (Gun.state as any).drift
     mesh.say({ dam: 'ntp', ntp: msg.ntp }, {[peer.id]: peer})
     return
   }
@@ -82,7 +82,7 @@ function hearNTP(msg: { dam: 'ntp', ntp: NTP }, peer: GunPeer) {
   if (!ntpres) return
   delete pending[peer.id]
 
-  ntpres.ntp.t4 = Gun.state()
+  ntpres.ntp.t4 = Gun.state() - (Gun.state as any).drift
   ntpres.ntp.t2 = msg.ntp.t2
   ntpres.ntp.t3 = msg.ntp.t3
   resolveNTP(ntpres)
@@ -97,19 +97,17 @@ async function doSync(root: _GunRoot) {
   //console.log("start-dosync", peers)
 
   let all = (await Promise.all(
-    Object.entries<GunPeer>(peers)
-      .filter(([pid, _]) => timeoutPeers[pid] || 0 < 5)
-      .map(([_, peer]) => {
-        return sendNTP(peer)
-      })
+    Object.entries(peers)
+      .filter(([pid, _]) => (timeoutPeers[pid] || 0) < 5)
+      .map(([_, peer]) => sendNTP(peer))
   )).filter((v) => !(v.peer.id in timeoutPeers))
 
   if (all.length == 0) return
 
   let drift = all.map((a) => a.offset)
-    .reduce((a, b) => a + b) / (all.length + smooth);
-  (Gun.state as any).drift += drift
-  //console.log("end-dosync", (Gun.state as any).drift, drift)
+    .reduce((a, b) => a + b) / (all.length);
+  (Gun.state as any).drift = drift
+  // console.log("end-dosync", (Gun.state as any).drift, drift)
 } 
 
 
@@ -124,11 +122,14 @@ Gun.on("opt", function init(root: _GunRoot) {
   }
 
   root.on("hi", function(peer: GunPeer) {
+    this.to.next(peer);
     peers[peer.id] = peer
     delete timeoutPeers[peer.id]
   });
   root.on("bye", function(peer: GunPeer) {
+    this.to.next(peer as any);
     delete peers[peer.id]
+    delete timeoutPeers[peer.id]
   });
 
   let opt = root.opt as GunOptions;
