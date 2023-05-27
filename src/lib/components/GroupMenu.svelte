@@ -1,15 +1,15 @@
 <script lang="ts">
   import { screenStore, groupsStore } from "$lib/stores"
   import { Icon } from "@steeze-ui/svelte-icon"
-  import { UserGroup, PlusCircle } from "@steeze-ui/heroicons"
+  import { Bell, UserGroup, PlusCircle } from "@steeze-ui/heroicons"
   import { onMount } from "svelte"
   import dummyGroups from "../mock/groups"
 
   let groups: { [id: string]: any } = dummyGroups
-  let selectedMenu: string
+  let selectedMenu: string = ":update:"
   let group: any | undefined
   $: groups
-  $: selectedMenu = (Object.entries(groups)[0][1]).groupId?.reduce((word, curr)=>word + String.fromCharCode(curr), "") || ":new:"
+  $: selectedMenu
   $: group
   onMount(() => {
     groupsStore.set(dummyGroups)
@@ -27,7 +27,20 @@
   </h4>
   <button
     class={`text-sm !rounded-md my-1 h-8 mx-2 px-2 gap-x-2 transition-colors duration-200 flex flex-row items-center active:bg-base-content/20 no-underline ${
-      !selectedMenu || selectedMenu === ":new:"
+      !selectedMenu || selectedMenu === ":update:"
+        ? "active bg-base-100"
+        : "hover:bg-base-100 bg-base-200"
+    }`}
+    on:click|preventDefault={() => {
+      screenStore.selectedGroupMenu.set(":update:")
+    }}
+  >
+    <Icon src={Bell} theme="solid" class="color-gray-900 w-5 h-5" />
+    <p class="">Updates</p>
+  </button>
+  <button
+    class={`text-sm !rounded-md my-1 h-8 mx-2 px-2 gap-x-2 transition-colors duration-200 flex flex-row items-center active:bg-base-content/20 no-underline ${
+      selectedMenu === ":new:"
         ? "active bg-base-100"
         : "hover:bg-base-100 bg-base-200"
     }`}
