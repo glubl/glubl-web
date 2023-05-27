@@ -60,5 +60,22 @@
 		"ts-jest": "^29.1.0",
 		"unique-names-generator": "^4.7.1"
 	},
+	"jest": {
+		"transform": {
+			"^.+\\.svelte$": [
+				"svelte-jester",
+				{
+					"preprocess": true
+				}
+			],
+			"^.+\\.ts$": "ts-jest",
+			"^.+\\.js$": "babel-jest"
+		},
+		"moduleFileExtensions": [
+			"js",
+			"ts",
+			"svelte"
+		]
+	},
 	"packageManager": "yarn@3.5.0"
 }
