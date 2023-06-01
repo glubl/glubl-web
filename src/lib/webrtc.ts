@@ -3,7 +3,7 @@ import { Debugger } from "./debugger"
 
 declare var global: typeof globalThis | (Window & typeof globalThis)
 
-const isDebug = true
+const isDebug = false
 const _debugger = Debugger("RTC", isDebug)
 
 export type RTCSignal = {

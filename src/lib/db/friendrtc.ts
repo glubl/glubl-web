@@ -5,7 +5,7 @@ import Gun from "gun/gun"
 import type { Tunnel, TunnelConnection, TunnelPeer } from "./tunnel"
 import { Debugger } from "../debugger"
 
-const isDebug = true
+const isDebug = false
 const _debugger = Debugger("friendRTC", isDebug)
 
 Gun.on("opt", function (this: IGunHookContext<_GunRoot>, root: _GunRoot) {

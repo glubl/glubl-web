@@ -3,7 +3,7 @@ import Gun, { type IGunHookContext, type IGunInstance, type _GunRoot, type IGunO
 import { random } from "lodash"
 import { Debugger } from "../debugger"
 
-const isDebug = true
+const isDebug = false
 const _debugger = Debugger("tunnel", isDebug)
 
 if (typeof window !== "undefined") (window as any).EEventEmitter = EventEmitter
