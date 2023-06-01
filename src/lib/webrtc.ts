@@ -110,7 +110,7 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
             maxRetransmits: 3,
         }
         this.initOffer = opt?.offer || {
-            iceRestart: false,
+            iceRestart: true,
             offerToReceiveAudio: true,
             offerToReceiveVideo: true
         }
@@ -252,9 +252,9 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
 
                 if (pc.remoteDescription) {
                     _debugger.log("{{ice apply cache}}")
-                    for (let candidate of this.pendingICECandidate) {
-                        await pc.addIceCandidate(candidate)
-                    }
+                    await pc.addIceCandidate(this.pendingICECandidate[this.pendingICECandidate.length])
+                    // for (let candidate of this.pendingICECandidate) {
+                    // }
                     this.pendingICECandidate = []
                 }
                 return
@@ -282,10 +282,11 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
             this.createPeer()
 
         let pc = this.pc!
-
+        var offer: RTCSessionDescriptionInit
         try {
             this.makingOffer = true
-            let offer = await pc.createOffer(this.initOffer)
+            
+            offer =  await pc.createOffer(this.initOffer)
             if (pc.signalingState != "stable") {
                 _debugger.log("::offer:: send cancel")
                 return
@@ -332,6 +333,7 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
         let pc = this.pc = new (this.RTCPeerConnection)(this.initPeerConnection)
         const ins = this
         function onOpen(this: RTCDataChannel) {
+            pc.addEventListener("negotiationneeded", (e) => ins.sendOffer())
             ins.clearReconnect()
             _debugger.log("::ping:: send")
             this.send("ping")
@@ -429,7 +431,7 @@ export class RTCPeer extends EventEmitter<RTCPeerEvents> {
             })
         })
 
-        pc.addEventListener("negotiationneeded", (e) => this.sendOffer())
+        
 
         this.addDataChannel('init', onMessage, onOpen, onClose, onError)
         

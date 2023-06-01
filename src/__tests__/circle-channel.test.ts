@@ -1,6 +1,6 @@
 import { getUserSpacePath, randStr } from "../lib/utils"
 import { CircleChannel, GroupNode, type CircleMiddleware, type GroupData, type GroupState } from "../lib/circle-channel"
-import Gun from "gun"
+import Gun, { type IGunChain } from "gun"
 import SEA from "gun/sea"
 import "gun/lib/then"
 import "gun/lib/radix"
@@ -10,11 +10,11 @@ import type { IGunInstance, IGunUserInstance } from "gun"
 import dayjs from "dayjs"
 
 var d: any = {}
-var gun: IGunInstance
+var gun: IGunChain<any, any, any, string>
 var user: IGunUserInstance
 
 beforeEach(() => {
-    gun = Gun({
+    const gg = Gun({
         store: {
             put: (key: string, value: any, callback?: ((err: any, value: any) => void)) => {
                 d[''+key] = value
@@ -33,7 +33,8 @@ beforeEach(() => {
         multicast: false,
         stats: false
     })
-    user = gun.user()
+    user = gg.user()
+    gun = gg as any
 })
 
 describe("Chat", () => {
@@ -560,5 +561,70 @@ describe("Group", () => {
         expect([...(await group3!.readAll()).entries()].sort(([k1], [k2]) => k1 < k2 ? -1 : 1).map(([_, v]) => v))
             .toEqual(messages)
         await new Promise(res => setTimeout(res, 100))
+    })
+
+    it("should create friend group", async () => {
+        const [pair1, pair2] = await Promise.all([
+            SEA.pair(),
+            SEA.pair()
+        ])
+
+        const [node1, node2] = await Promise.all([
+            GroupNode.createFriendGroup(gun, pair2, pair1),
+            GroupNode.createFriendGroup(gun, pair1, pair2)
+        ])
+        const [state1, state2] = await Promise.all([
+            new Promise<GroupState>(res => node1.once('statechange', res)),
+            new Promise<GroupState>(res => node2.once('statechange', res))
+        ])
+        expect([state1, state2]).toEqual(['ready', 'ready'])
+        expect([node1.state, node2.state]).toEqual(['ready', 'ready'])
+
+
+
+
+        await new Promise(res => user.auth(pair1, res))
+        await Promise.all([
+            node1.listen(gun.get("config").get("1")),
+            node2.listen(gun.get("config").get("2"))
+        ])
+        await new Promise(res => setTimeout(res, 100))
+        var [node1Unread, node2Unread] = [0,0,0]
+        var [node1Msgs, node2Msgs] = [new Array<any>(), new Array<any>()] 
+        node1.on('num-reads', n => node1Unread = n)
+        node2.on('num-reads', n => node2Unread = n)
+        node1.on('recv-chat', d => node1Msgs.push(d))
+        node2.on('recv-chat', d => node2Msgs.push(d))
+
+
+        await new Promise(res => user.auth(pair2, res))
+        node2.emit("send-chat", "DING")
+        node2.emit("send-chat", "DONG")
+        await new Promise(res => setTimeout(res, 100))
+        expect(node1Unread).toEqual(2)
+        expect(node2Unread).toEqual(0)
+        expect(Array.from((await node1.readAll()).values())).toEqual(["DING", "DONG"])
+        expect(Array.from((await node2.readAll()).values())).toEqual(["DING", "DONG"])
+
+
+        await new Promise(res => user.auth(pair1, res))
+        node1.emit("send-chat", "DING")
+        node1.emit("send-chat", "DONG")
+        await new Promise(res => setTimeout(res, 100))
+        expect(Array.from((await node2.read()).values())).toEqual(["DING", "DONG"])
+        expect(Array.from((await node1.readAll()).values())).toEqual(["DING", "DONG", "DING", "DONG"])
+        expect(Array.from((await node2.readAll()).values())).toEqual(["DING", "DONG", "DING", "DONG"])
+
+
+        await new Promise(res => user.auth(pair1, res))
+        node1.emit("send-chat", "TEST1")
+        await new Promise(res => setTimeout(res, 10))
+        await new Promise(res => user.auth(pair2, res))
+        node2.emit("send-chat", "TEST2")
+        await new Promise(res => setTimeout(res, 10))
+        node2.emit("send-chat", "TEST3")
+        await new Promise(res => setTimeout(res, 10))
+        expect(Array.from((await node1.read()).entries()).sort(([ka], [kb]) => ka < kb ? -1 : 1).map(([_,v]) => v)).toEqual(["TEST2", "TEST3"])
+        expect(Array.from((await node2.read()).values())).toEqual([])
     })
 })

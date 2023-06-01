@@ -1,6 +1,6 @@
-import type { GunHookFriend, GunOptions, GunPeer, IGunHookContext, IGunInstance, IGunOnEvent, _GunRoot } from "gun"
+import type { GunPeer, IGunHookContext, IGunInstance, _GunRoot } from "gun"
 import SEA from "gun/sea"
-import { RTCPeer, type GunRTCPeerOptions, type RTCSignal } from "../webrtc"
+import { RTCPeer, type GunRTCPeerOptions } from "../webrtc"
 import Gun from "gun/gun"
 import type { Tunnel, TunnelConnection, TunnelPeer } from "./tunnel"
 import { Debugger } from "../debugger"
@@ -118,7 +118,7 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
                 url: id,
                 wire: wire,
                 rtc: peer
-            }
+            } as any
             function close(this: RTCDataChannel) {
                 _debugger.log("{{data channel}} close", this.label)
                 gunPeer.wire = null
@@ -130,7 +130,7 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
             }
             function open(this: RTCDataChannel) {
                 _debugger.log("{{data channel}} open", this.label)
-                gunPeer.wire = wire
+                gunPeer.wire = wire as any
                 gunPeer.id = id!
                 mesh.hi(gunPeer)
                 root.on("rtc-peer", { peer: gunPeer, connected: true })
@@ -146,7 +146,7 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
                 gunPeer.wire = null
                 mesh.bye(gunPeer)
             })
-            rtcPeer.on("data-channel", (label) => _debugger.log("{{data-channel}}", label))
+            // rtcPeer.on("data-channel", (label) => _debugger.log("{{data-channel}}", label))
             setTimeout(() => rtcPeer.connect(), 50)
             return rtcPeer
         })()

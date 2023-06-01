@@ -1,17 +1,11 @@
 import { EventEmitter } from "events";
-import { SEA, type GunHookMessagePut, type IGunChain, type IGunOnEvent, type ISEAPair, type IGunInstance, type IGunInstanceRoot, type ISEA } from "gun";
-// import SEA from 'gun';
-import * as lo from 'lodash'
+import { SEA, type GunHookMessagePut, type IGunChain, type IGunOnEvent, type ISEAPair, type IGunInstance, type IGunInstanceRoot} from "gun";
 
 import dayjs from 'dayjs'
 import dayjsParse from 'dayjs/plugin/customParseFormat'
 import dayjsUtc from 'dayjs/plugin/utc'
 import dayjsFormat from "dayjs/plugin/advancedFormat";
 import { getUserSpacePath, randStr } from "./utils";
-// import { get, type readonly } from "svelte/store";
-// import { myProfileStore } from "./stores";
-// import { getGun } from "./db";
-// import { getUserSpacePath } from "./utils";
 dayjs.extend(dayjsParse)
 dayjs.extend(dayjsUtc)
 dayjs.extend(dayjsFormat)
@@ -63,8 +57,6 @@ export class CircleChannel extends EventEmitter<CircleEvents> {
     }
     start?: number
     end?: number
-    saveDebounce = 2000
-
     constructor(
         gun: IGunChain<any, any, any, string>,
         config: ChannelConfig,
@@ -260,26 +252,6 @@ export type GroupsJoined = /** encrypted */ {
     }
 }
 
-
-/**
-SEA.certify(
-  frenPair1.pub, 
-  [
-    {
-      "#": {
-        "=": "group1/pub"
-      }, 
-      ".": {
-        "=": "fren1"
-      }
-    }, 
-    "group1/msgs"
-  ], 
-  pair, 
-  c => window.cc = c
-)
- */
-
 export type GroupState = 'initializing' | 'ready' | 'invalid'
 
 export type GroupNodeEvents = {
@@ -313,7 +285,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
     private end?: number
     private _id?: string
     get id() { return this._id }
-    readonly gun: IGunChain<any, any, any, string>
+    // readonly gun: IGunChain<any, any, any, string>
 
     private _prevPath?: string
     get prevPath() { return this._prevPath }
@@ -343,49 +315,77 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
     }
 
     constructor(
-        gun: IGunInstance<any>,
+        readonly gun: IGunChain<any, any, any, string>,
         readonly path: string,
         readonly ownerPub: {pub: string, epub: string},
-        readonly myPair: ISEAPair
+        readonly myPair: ISEAPair,
+        init?: boolean
     ) {
         super()
-        this.gun = gun.get(path)
         this.once('statechange', (s) => {
             if (s !== 'ready') return
         })
-        this.init()
+        if (init ??= true)
+            this.init()
     }
 
     private setInvalid(reason: string) {
         this.state = 'invalid'
         this._invalidReason = reason
     }
-    private groupDataEve?: IGunOnEvent
+    // private groupDataEve?: IGunOnEvent
+    // private groupDataEnc?: string
     private groupData?: GroupData["dat"][any]
-    private groupDataEnc?: string
+    static async createFriendGroup(
+        gun: IGunChain<any, any, any, string>,
+        friend: {pub: string, epub: string},
+        myPair: ISEAPair
+    ) {
+        const shared = await SEA.secret(friend, myPair)
+        if (!shared) 
+            throw "Can't create shared key!"
+        const myPath = await getUserSpacePath(myPair.pub, shared)
+        const friendPath = await getUserSpacePath(friend.pub, shared)
+        const groupId = await getUserSpacePath([myPair.pub, friend.pub].sort().join(''), shared)
+        const node = new GroupNode(gun, '', friend /** Disables group rotation */, myPair, false)
+        
+        node._members = new Map([
+            [friendPath, friend],
+            [myPath, { pub: myPair.pub, epub: myPair.epub }]
+        ])
+        node.groupData = {
+            id: groupId,
+            key: shared,
+            start: 0
+        }
+        setTimeout(() => node.state = 'ready', 5)
+        return node
+    }
     private async init() {
         const ownerSecret = await SEA.secret(this.ownerPub.epub, this.myPair)
         const myPath = await getUserSpacePath(this.myPair.pub, ownerSecret!)
         const root = (this.gun.back(-1) as IGunInstanceRoot<any, any>)
+        const groupGun = root.get(this.path)
         // Get group info
         // const gData = this.gData = await this.gun.then() as typeof this.gData
         // if (!gData || !gData.dat || !gData.mem) {
         //     this.setInvalid("Can't get group info!")
         //     return
         // }
-        const gMem = await this.gun.get("mem").then()
+        const gMem = await groupGun.get("mem").then()
         if (!gMem)
             throw 'Cannot get member data!'
 
+        var groupDataEnc = ''
         root.get(`${this.path}/dat`).get(myPath).on(async (v, _, __, eve) => {
-            this.groupDataEve = eve
+            // this.groupDataEve = eve
             if (!v) {
-                if (!this.groupDataEnc) 
+                if (!groupDataEnc) 
                     this.setInvalid("Group info empty!")
                 return
             }
-            if (v === this.groupDataEnc) return
-            this.groupDataEnc = v
+            if (v === groupDataEnc) return
+            groupDataEnc = v
 
             let dat: GroupData["dat"][any] = this.groupData = await SEA.decrypt(await SEA.verify(v, this.ownerPub.pub), ownerSecret!)
             if (!dat || !dat.key) {
@@ -478,8 +478,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
     private myChannel?: CircleChannel
     get writeChannel()  { return this.myChannel }
     get isMine() { 
-        let pair: ISEAPair = this.myPair || ({} as any)
-        return pair.pub === this.ownerPub.pub && pair.epub === this.ownerPub.epub
+        return this.myPair.pub === this.ownerPub.pub && this.myPair.epub === this.ownerPub.epub
     }
     async listen(gunConfig: IGunChain<any, any, any, string>) {
         if (this.state !== 'ready') throw 'Group is not ready'
@@ -500,7 +499,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
         var config: ChannelConfig | undefined = await SEA.decrypt(configEnc, this.groupData?.key!)
         config = typeof config !== 'object' ? {} : config
         for (const [path, mem] of this._members.entries()) {
-            const g = root.get(`~${mem.pub}/g/${this.groupData?.id}/msgs`)
+            const g = root.get(`~${mem.pub}/c/${this.groupData?.id}/msgs`)
             const isMe = mem.pub === this.myPair.pub
             const channel = new CircleChannel(
                 g, 
@@ -512,6 +511,8 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
                 undefined,
                 !isMe || !this.isCurrent,
                 !this.isCurrent,
+                this.start,
+                this.end
             )
             this.channelArr.push(channel)
             channel.on('num-reads', async () => {
@@ -568,7 +569,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
                 const newMembers = new Set(members ??= Array.from(oldMembers))
                 const oldNewMember = Array.from(newMembers).filter(m => oldMembers.has(m))
                 
-                const { groupId, groupPath, groupPair } = await GroupNode.createNew(root, owner, members, this.path, oldNewMember)
+                const { groupId, groupPath, groupPair } = await GroupNode.createNew(root as any, owner, members, this.path, oldNewMember)
                 const groupData = Object.fromEntries(await Promise.all(Array.from(oldMembers).map(async (m) => {
                     const shared = await SEA.secret(m.epub, owner)
                     return Promise.all([
@@ -594,7 +595,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
 
     rotate?: (owner: ISEAPair, member?: {pub: string, epub: string}[]) => Promise<{ groupId: string, groupPath: string, groupPair: ISEAPair }>
 
-    static async createNew(gun: IGunInstance<any>, owner: ISEAPair, members: {pub: string, epub: string}[], prev?: string, prevMembers?: {pub: string, epub: string}[]) {
+    static async createNew(gun: IGunChain<any, any, any, string>, owner: ISEAPair, members: {pub: string, epub: string}[], prev?: string, prevMembers?: {pub: string, epub: string}[]) {
         const groupPair = await SEA.pair()
         const groupKey = randStr(43)
         const groupId = (gun as any).back("opt.uuid")() as string
@@ -652,43 +653,18 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
     }
 }
 
-
-
-export type GroupEvents = {
-    "statechange": [state: GroupState]
+export async function createSEAMiddleware(otherPub: {pub: string, epub: string}, myPair: ISEAPair): Promise<{
+    send: CircleMiddleware,
+    recv: CircleMiddleware
+}> {
+    const shared = await SEA.secret(otherPub, myPair)
+    if (!shared) throw "Can't create shared key pair!"
+    return {
+        send: async (data) => {
+            return await SEA.sign(await SEA.encrypt(data, shared), myPair)
+        },
+        recv: async (data) => {
+            return await SEA.decrypt(await SEA.verify(data, otherPub), shared)
+        }
+    }
 }
-
-// export class GroupChannel extends EventEmitter<GroupEvents> {
-//     private path: string
-//     private owner: Profile
-    
-//     private secret?: string 
-//     private _invalidReason?: string
-//     get invalidReason() { return this._invalidReason }
-//     private _state: GroupState = 'initializing'
-//     get state() { return this._state }
-//     set state(s: GroupState) {
-//         if (this._state === s) return
-//         this._state = s
-//         this.emit('statechange', s)
-//     }
-//     constructor(path: string, owner: Profile) {
-//         super()
-//         this.path = path
-//         this.owner = owner
-//     }
-//     private setInvalid(reason: string) {
-//         this.state = 'invalid'
-//         this._invalidReason = reason
-//     }
-//     async init() {
-//         let { SEA, gun, pair } = getGun()
-//         let ownerSecret = await SEA.secret(this.owner, pair)
-//         if (!ownerSecret) {
-//             this.setInvalid("Can't derive shared secret with group owner!")
-//             return
-//         }
-        
-
-//     }
-// }

@@ -47,14 +47,12 @@ declare global {
     msg: string
     ts: number
     by: FriendProfile
-    to: FriendProfile
   }
   
   type ChatMessageGun = {
     msg: string
     ts: number
     by: string
-    to: string
   }
 
   interface String {

@@ -1928,6 +1928,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@shlappas/itertools@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "@shlappas/itertools@npm:2.1.1"
+  checksum: dac2514be5fcd3d618eed773518597b9cbfa5c3bde105afdbe268790944635da95ca2b3c7d11d46d4e1e6280f57e75c49c8850ab51e434a41d4e1184c220b2c9
+  languageName: node
+  linkType: hard
+
+"@shlappas/rotating-tree@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@shlappas/rotating-tree@npm:1.0.0"
+  checksum: 4e7647c0e3361598bb84432859ca84953b60e8c0d25fb56b701511a22166ddcbe0ee2528dcf5dab0343eda430a3098fa6acae51edb8da7b7dd41baa89ed649c3
+  languageName: node
+  linkType: hard
+
+"@shlappas/sorted-array@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "@shlappas/sorted-array@npm:1.2.0"
+  dependencies:
+    "@shlappas/itertools": ^2.1.1
+    wbtree: ^0.0.0
+  checksum: 88c6957894c35fffeeade4d105ea12ffa793ceb99c9fc75a92946e446c8b3646b9b6cb0296c4b0af2aff8f47e9e2b1b38bdb3a63ed1436b17dd624b961a7204c
+  languageName: node
+  linkType: hard
+
 "@sinclair/typebox@npm:^0.25.16":
   version: 0.25.24
   resolution: "@sinclair/typebox@npm:0.25.24"
@@ -4127,6 +4151,7 @@ __metadata:
   resolution: "glubl-web@workspace:."
   dependencies:
     "@babel/preset-env": ^7.21.5
+    "@shlappas/sorted-array": ^1.2.0
     "@steeze-ui/feather-icons": ^1.3.0
     "@steeze-ui/heroicons": ^2.2.1
     "@steeze-ui/svelte-icon": ^1.3.2
@@ -7482,6 +7507,15 @@ __metadata:
   dependencies:
     makeerror: 1.0.12
   checksum: ad7a257ea1e662e57ef2e018f97b3c02a7240ad5093c392186ce0bcf1f1a60bbadd520d073b9beb921ed99f64f065efb63dfc8eec689a80e569f93c1c5d5e16c
+  languageName: node
+  linkType: hard
+
+"wbtree@npm:^0.0.0":
+  version: 0.0.0
+  resolution: "wbtree@npm:0.0.0"
+  dependencies:
+    "@shlappas/rotating-tree": ^1.0.0
+  checksum: a031a772e34bffaaf5b0b545434fa96d54442aed133688764090bd3fd3afb34475aa913ee624c92b48e2942f9e000e0f47a0835494e4cf459b0bc96ecb14b42d
   languageName: node
   linkType: hard
 

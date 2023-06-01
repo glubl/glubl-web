@@ -1,5 +1,5 @@
 import { EventEmitter } from "events"
-import Gun, { type GunOptions, type GunPeer as GP, type IGunHookContext, type IGunInstance, type _GunRoot, type GunMesh, type IGun, type IGunOnEvent } from "gun"
+import Gun, { type IGunHookContext, type IGunInstance, type _GunRoot, type IGunOnEvent } from "gun"
 import { random } from "lodash"
 import { Debugger } from "../debugger"
 
