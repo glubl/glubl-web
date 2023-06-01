@@ -13,7 +13,7 @@ import { Debugger } from "./debugger";
 // import { localStream, screenStore } from "./stores";
 
 
-const isDebug = true
+const isDebug = false
 const _debugger = Debugger("call", isDebug)
 
 export type CallStreamKind = "cam" | "screen"
