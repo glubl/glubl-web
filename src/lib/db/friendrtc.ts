@@ -1,11 +1,11 @@
-import type { GunHookFriend, GunOptions, GunPeer, IGunHookContext, IGunInstance, IGunOnEvent, _GunRoot } from "gun"
+import type { GunPeer, IGunHookContext, IGunInstance, _GunRoot } from "gun"
 import SEA from "gun/sea"
-import { RTCPeer, type GunRTCPeerOptions, type RTCSignal } from "../webrtc"
+import { RTCPeer, type GunRTCPeerOptions } from "../webrtc"
 import Gun from "gun/gun"
 import type { Tunnel, TunnelConnection, TunnelPeer } from "./tunnel"
 import { Debugger } from "../debugger"
 
-const isDebug = true
+const isDebug = false
 const _debugger = Debugger("friendRTC", isDebug)
 
 Gun.on("opt", function (this: IGunHookContext<_GunRoot>, root: _GunRoot) {
@@ -63,10 +63,12 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
         return
     }
 
+    var tPeer: TunnelPeer | undefined
     tunnel.on("connected", async (tunPeer: TunnelPeer) => {
         var enc = await SEA.verify(tunPeer.id, friend.pub)
         var id: string | undefined
         if (enc) id = await SEA.decrypt(enc, secret)
+        clearTimeout(tunnelDefer)
         if (!id || id === pair.pub) {
             tunPeer.disconnect()
             return
@@ -77,7 +79,7 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
             peer.tunPeer.disconnect()
         }
         // TODO: Turn this into class
-        peer.tunPeer = tunPeer
+        tPeer = peer.tunPeer = tunPeer
         peer.send ??= async function(msg: any) {
             if (this.tunPeer.isDead) {
                 return
@@ -116,26 +118,26 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
                 url: id,
                 wire: wire,
                 rtc: peer
-            }
+            } as any
             function close(this: RTCDataChannel) {
                 _debugger.log("{{data channel}} close", this.label)
                 gunPeer.wire = null
                 mesh.bye(gunPeer)
+                root.on("rtc-peer", { peer: gunPeer, connected: false })
             }
             function error(this: RTCDataChannel, ev: Event) {
                 _debugger.log("{{data channel}} error", this.label, ev)
-                gunPeer.wire = null
-                mesh.bye(gunPeer)
             }
             function open(this: RTCDataChannel) {
                 _debugger.log("{{data channel}} open", this.label)
-                gunPeer.wire = wire
+                gunPeer.wire = wire as any
                 gunPeer.id = id!
                 mesh.hi(gunPeer)
+                root.on("rtc-peer", { peer: gunPeer, connected: true })
             }
             function message(this: RTCDataChannel, msg: MessageEvent<any>) {
                 if (!msg.data) return
-                // _debugger.log("::msg::")
+                // _debugger.log("::msg::", msg.data)
                 mesh.hear(msg.data, gunPeer)
             }
             rtcPeer.addDataChannel('gun', message, open, close, error)
@@ -144,11 +146,19 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
                 gunPeer.wire = null
                 mesh.bye(gunPeer)
             })
-            rtcPeer.on("data-channel", (label) => _debugger.log("{{data-channel}}", label))
+            // rtcPeer.on("data-channel", (label) => _debugger.log("{{data-channel}}", label))
             setTimeout(() => rtcPeer.connect(), 50)
             return rtcPeer
         })()
     })
-    tunnel.connect()
-
+    let tunnelDefer: ReturnType<typeof setTimeout>
+    let fn = (p?: TunnelPeer) => {
+        if (!p && tPeer) return
+        if (tPeer && p && tPeer.id !== p.id) return
+        tPeer = undefined
+        tunnel?.connect()
+        tunnelDefer = setTimeout(fn, 15 * 1000)
+    }
+    tunnel.on("disconnected", fn)
+    fn()
 }

@@ -1,165 +1,79 @@
 <script lang="ts">
   import { Icon } from "@steeze-ui/svelte-icon";
-  import type {
-    GunHookMessagePut,
-    IGunChain,
-    IGunInstance,
-    IGunOnEvent,
-  } from "gun";
-  import { PaperAirplane, Bars3, Phone, User } from "@steeze-ui/heroicons";
+  import { PaperAirplane, Phone, User } from "@steeze-ui/heroicons";
   import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { menuOpen, myProfileStore, screenStore } from "../stores";
+  import { friendRTCStore, myProfileStore, screenStore, friendChannelStore } from "../stores";
   import { getGun } from "../db";
-  import { DecriptionFail, SharedCreationFail, VerifyFail } from "../errors";
   import { get, type Unsubscriber } from "svelte/store";
   import * as _ from "lodash";
   import CallScreen from "./CallScreen.svelte";
   import NavButton from "./NavButton.svelte";
-  import { getUserSpacePath } from "../utils";
-
+  import { SortedArray } from '@shlappas/sorted-array'
+  import type { GroupNode } from "../circle-channel";
   export let friend: FriendProfile;
-
-  const { gun, SEA, user, pair } = getGun();
-  const uuidFn: (l?: number) => string = (gun as any).back("opt.uuid");
-
-  let shared: string;
-  let mySpacePath: string;
-  let mySpace: IGunChain<any>;
-  let theirSpacePath: string;
-  let theirSpace: IGunChain<any>;
-  let myE: IGunOnEvent | null;
-  let theirE: IGunOnEvent | null;
-  let chats: (ChatMessage & { index: number })[];
-  let chatData: { [k: string]: ChatMessage } = {};
-  let profileUnsub: Unsubscriber | null;
-  $: onCall = get(screenStore.currentActiveCall);
-  const refreshChat = _.debounce(
-    () => {
-      chats = [
-        ...Object.values(chatData)
-          .sort((a, b) => b.ts - a.ts)
-          .map((v: any, i) => {
-            v.index = i;
-            return v;
-          }),
-      ];
-    },
-    100,
-    { maxWait: 500 },
-  );
-
-  let profilePathMap: { [k: string]: FriendProfile } = {};
-  $: profilePathMap[theirSpacePath] = friend;
-
-  async function init(friend: FriendProfile) {
-    reset();
-
-    if (!friend.pub)
-      throw new Error("Friend profile somehow doesn't have public key??");
-    if (!pair.pub) throw new Error("Somehow you don't have public key????");
-
-    let _ = await SEA.secret(friend.epub, pair);
-    if (!_) throw new SharedCreationFail();
-    shared = _;
-
-    mySpacePath = await getUserSpacePath(pair.pub, shared)
-    mySpace = gun.get("~"+friend.pub)
-      .get("spaces")
-      .get(mySpacePath);
-    profileUnsub = myProfileStore.subscribe((v) => {
-      if (v) {
-        profilePathMap[mySpacePath] = { ...v, space: mySpacePath };
-      } else {
-        console.warn("Somehow your profile is undefined???");
-      }
-    });
-
-    theirSpacePath = await getUserSpacePath(friend.pub, shared)
-    theirSpace = user
-      .get("spaces")
-      .get(theirSpacePath)
-
-    theirSpace
-      .get("messages")
-      .map()
-      .on((v, k, _, e) => {
-        receiveMessage(v, k);
-        theirE = e;
-      });
-
-    mySpace
-      .get("messages")
-      .map()
-      .on((v, k, _, e) => {
-        receiveMessage(v, k);
-        myE = e;
-      });
-  }
+  
+  const { pair } = getGun();
+  let myProfile = $myProfileStore!
+  let profileUnsub: Unsubscriber = myProfileStore.subscribe(v => v && (myProfile = v))
+  let chats = new SortedArray<ChatMessageGun>((a, b) => b.ts - a.ts)
+    
+  let profilePathMap: Map<string, FriendProfile>;
+  let isWebRTC: boolean
+  let channel: GroupNode
+  let previousFriend: FriendProfile;
+  let previousChannel: GroupNode
   $: {
-    if (friend) init(friend);
+    if (previousChannel) {
+      previousChannel.off("recv-chat", insertMsg)
+    }
+    channel = ($friendChannelStore)[friend.pub]
+    channel.readAll()
+      .then(v => {
+        channel.on("recv-chat", insertMsg)
+        for (const [key, message] of v) {
+          insertMsg(message)
+        }
+      })
+    isWebRTC = !!$friendRTCStore.get(friend.pub)
+    previousFriend = friend
+    previousChannel = channel
   }
-
-  function reset() {
-    if (myE) {
-      myE.off();
-      myE = null;
-    }
-    if (theirE) {
-      theirE.off();
-      theirE = null;
-    }
-    chats = [];
-    chatData = {};
-    if (profileUnsub) {
-      profileUnsub();
-      profileUnsub = null;
-    }
+  friendRTCStore.subscribe(v => isWebRTC = v.has(friend.pub))
+  $: {
+    profilePathMap = new Map([
+      [friend.pub, friend],
+      [pair.pub, myProfile]
+    ])
   }
+  $: onCall = get(screenStore.currentActiveCall);
 
-  onDestroy(() => {
-    reset();
-  });
-
-  async function receiveMessage(v: { [k: string]: string }, k: string) {
-    delete v._;
-    const path = k.substring(k.indexOf("|") + 1);
-    const profile = profilePathMap[path];
-    if (!profile) {
-      throw new Error("Unknown chat sender");
-    }
-    const enc = await SEA.verify(v.d, profile.pub);
-    if (!enc) throw new VerifyFail();
-    const data = await SEA.decrypt(enc, shared);
-    if (!data) throw new DecriptionFail();
-
-    data.by = profile;
-    data.to = get(myProfileStore);
-
-    chatData[k] = data;
-    refreshChat();
+  function insertMsg(msg: ChatMessageGun, key?: string, unread?: boolean, meta?: any, doRead?: () => void) {
+    if (!msg.msg || !msg.ts || !msg.by || !profilePathMap.has(msg.by)) return
+    if (doRead) doRead()
+    chats.insert(msg)
+    chats = chats
   }
-
-  let messageInput: string;
   async function sendMessage() {
     if (!messageInput) return;
     const time = new Date();
     const msgData: ChatMessageGun = {
       msg: messageInput,
       ts: time.getTime(),
-      by: pair.pub,
-      to: friend.pub,
+      by: pair.pub
     };
-    const msgDataEnc = await SEA.encrypt(msgData, shared);
-    const msgDataSig = await SEA.sign(msgDataEnc, pair);
-    theirSpace
-      .get("messages")
-      .get(`${time.toISOString()}|${mySpacePath}`)
-      .put({ d: msgDataSig });
-
+    channel.emit('send-chat', msgData)
     messageInput = "";
   }
+  
 
+  onDestroy(() => {
+    if (profileUnsub)
+      profileUnsub()
+    channel.off("recv-chat", insertMsg)
+  });
+
+  let messageInput: string;
   let viewport: Element;
   let contents: Element;
   $: viewport, contents;
@@ -178,12 +92,11 @@
   {/if}
   <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-16 pb-2">
     <div bind:this={contents} id="contents" class="flex h-fit w-full flex-col-reverse">
-      {#each chats??[] as chat}
-         <!-- content here -->
+      {#each [...chats.values()] as chat, i}
         {#if 
-          chat.index != chats.length-1
-          && chat.by.pub == (chats[chat.index + 1]).by?.pub 
-          && chat.ts - (chats[chat.index + 1]).ts < 60000
+          i != chats.length-1
+          && chat.by == (chats.get(i + 1)?.by)
+          && (chat.ts - (chats.get(i + 1)?.ts??0)) < 60000
         }
           <div class="py-0.5 pr-8 flex flex-row w-full group hover:bg-base-200">
             <div
@@ -201,11 +114,11 @@
               <div
                 class="w-20 pt-2 h-10 flex shrink-0 items-center justify-center"
               >
-                {#if chat.by?.picture}
+                {#if profilePathMap.get(chat.by)?.picture}
                   <img
                     class="w-10 mask mask-circle mt-1"
-                    alt={`${chat.by.username} profile picture`}
-                    src={chat.by.picture}
+                    alt={`${profilePathMap.get(chat.by)?.username} profile picture`}
+                    src={profilePathMap.get(chat.by)?.picture}
                   />
                 {:else}
                   <Icon src={User} theme="solid" class="color-gray-900" />
@@ -214,7 +127,7 @@
               <div class="w-full min-w-0 inline-block break-words">
                 <div class="flex flex-row gap-x-2 items-start">
                   <p class="font-semibold text-accent-content/80">
-                    {chat.by.username}
+                    {profilePathMap.get(chat.by)?.username}
                   </p>
                   <p class="text-xs mt-1.5 text-base-content/50">
                     {dayjs.unix(chat.ts / 1000).format("DD/MM/YYYY hh:mm A")}
@@ -251,7 +164,13 @@
       on:click={() => navigator.clipboard.writeText(friend.pub)}
       class="min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5"
     >
-      <code class="truncate max-w-fit">{friend.pub.slice(0, 48)}...</code>
+      <code class="truncate max-w-fit">{friend.pub.slice(0, 12)}...</code>
+    </button>
+    <button
+      id="friendrtc"
+      class={`ml-2 min-w-0 flex items-center justify-center rounded-lg bg-accent h-fit translate-y-[1px] text-sm mt-.5 transition-all ease-in-out duration-300 overflow-hidden ${ isWebRTC ? 'w-16' : 'w-0' }`}
+    >
+      <code class="text-base-300">WebRTC</code>
     </button>
     <div class="flex-1" />
     {#if !onCall}

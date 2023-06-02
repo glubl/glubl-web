@@ -1,12 +1,13 @@
-import { DecriptionFail, EncryptionFail, HashFail, SharedCreationFail, VerifyFail } from "./errors"
+import { DecriptionFail, HashFail, SharedCreationFail, VerifyFail } from "./errors"
 import dayjs from "dayjs";
 import { getGun } from "./db";
 import auth from "./auth";
-import type { IGunOnEvent, ISEAPair, _GunRoot } from "gun";
-import { friendsStore } from "./stores";
+import type { IGunOnEvent, _GunRoot } from "gun";
+import { friendChannelStore, friendRTCStore, friendsStore } from "./stores";
 import  _ from "lodash";
 import { writable, get } from "svelte/store";
 import { debounceByParam, getUserSpacePath } from "./utils";
+import { GroupNode } from "./circle-channel";
 
 if (typeof window !== "undefined")
   window._ = _
@@ -104,10 +105,23 @@ const initiateFriendData = debounceByParam(async(d: string) => {
   }
 
   const sharedSpace = await getUserSpacePath(friendData.pub, shared)
+  gun._.on("friend", {...friendData, path: sharedSpace, mypath: mySpacePath})
 
-  setTimeout(() => {
-    gun._.on("friend", {...friendData, path: sharedSpace, mypath: mySpacePath})
-  }, 1)
+  const channels = get(friendChannelStore)
+  if (!channels[friendData.pub]) {
+    const channel = await GroupNode.createFriendGroup(
+      gun as any, 
+      { pub: friendData.pub, epub: friendData.epub },
+      pair
+    )
+    channel.once('statechange', (s) => {
+      channel.listen((gun as any).back(-1).get(`~${pair.pub}/fd/${sharedSpace}`).get("c"))
+    })
+    friendChannelStore.update(v => {
+      const newV = { ...v, [friendData.pub]: channel }
+      return newV
+    })
+  }
   
 }, (a) => a, 1000, {'leading': true, 'trailing': false})
 
@@ -115,6 +129,17 @@ const initiateFriendData = debounceByParam(async(d: string) => {
 export const init = async () => {
   const { gun, user, pair} = getGun()
   const mySpacePath = await getUserSpacePath(pair.pub, pair.epriv)
+  gun._.on("rtc-peer", function (data) {
+    const { peer, connected } = data
+    if (connected) {
+      friendRTCStore.update(v => v.set(peer.id, peer as any))
+    } else {
+      friendRTCStore.update(v => {
+        v.delete(peer.id)
+        return v
+      })
+    }
+  })
   user.get("friends")
     .on((v, _, __, e) => {
       // console.log("friends-init-ev", v)
