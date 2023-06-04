@@ -8,6 +8,7 @@ import  _ from "lodash";
 import { writable, get } from "svelte/store";
 import { debounceByParam, getUserSpacePath } from "./utils";
 import { GroupNode } from "./circle-channel";
+import { listenNotification } from "./notification";
 
 if (typeof window !== "undefined")
   window._ = _
@@ -122,7 +123,7 @@ const initiateFriendData = debounceByParam(async(d: string) => {
       return newV
     })
   }
-  
+  listenNotification(friendData)
 }, (a) => a, 1000, {'leading': true, 'trailing': false})
 
 

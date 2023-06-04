@@ -44,9 +44,7 @@ export async function init() {
 
   const gun = Gun(opt)
   window.gun = gun;
-  gunStore.set(gun)
-
-  
+  gunStore.set(gun) 
 }
 
 export function deinit() {

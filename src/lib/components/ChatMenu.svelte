@@ -13,7 +13,6 @@
     });
   let fcsUnsub = friendChannelStore.subscribe((v) => {
     friendChannels = v;
-    
   })
   $: {
     for (const [k,v] of Object.entries(friendChannels)) {
@@ -62,7 +61,7 @@
     <Icon src={UserPlus} theme="solid" class="color-gray-900 w-5 h-5" />
     <p class="">Add Friend</p>
   </button>
-  <button
+  <!-- <button
     class={`text-sm !rounded-md my-1 h-8 mx-2 px-2 gap-x-2 transition-colors duration-200 flex flex-row items-center active:bg-base-content/20 no-underline ${
       selectedMenu === ":calls:"
         ? "active bg-base-100"
@@ -74,7 +73,7 @@
   >
     <Icon src={Phone} theme="solid" class="color-gray-900 w-5 h-5" />
     <p class="">Calls</p>
-  </button>
+  </button> -->
   {#each Object.entries(friendLastRead).sort(([_,o1],[__,o2]) => (o1.l < o2.l) ? -1 : 1) as [pub]}
     <button
       id={pub}

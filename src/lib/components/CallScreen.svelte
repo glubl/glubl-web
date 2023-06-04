@@ -13,6 +13,7 @@
     localStreams,
     screenStore,
     callExpanded,
+    callFriendStore,
   } from "@src/lib/stores";
   import ProfileTile from "./ProfileTile.svelte";
   import NavButton from "./NavButton.svelte";
@@ -102,13 +103,14 @@
     mesh.say({peerId: peerId, dam: callId}, gunPeer)
   }
 
-  function startCall() {
+  export function startCall() {
     if (controller.state !== "closed") return
     fetchRTCPeer()
     if (!rtcPeer) {
       console.error("RTC peer don't exists")
       return
     }
+    screenStore.currentActiveCall.set(friend.pub)
     controller.on("broadcastsend", sendBroadcast)
     let stateChange = (sate: CallPeerState, reason?: string) => {
       if (sate !== "closed") return
@@ -141,7 +143,7 @@
     controller.start(callId, pair.pub)
   }
 
-  function stopCall() {
+  export function stopCall() {
     if (controller.state === "closed") return
     controller.stop() 
   }
@@ -160,9 +162,7 @@
 </script>
 
 <div
-  class="flex flex-col flex-1 ${fullScreen
-    ? ''
-    : 'bg-base-300 w-full h-60 py-2'}"
+  class="flex flex-col flex-1 bg-base-300 w-full py-2"
 >
   {#if fullScreen}
     <div

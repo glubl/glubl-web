@@ -9,6 +9,7 @@ import SEA from "gun/sea"
 import * as stores from "./stores"
 import * as db from "./db"
 import * as friends from "./friends"
+import * as groups from "./groups"
 
 import { uniqueNamesGenerator, adjectives, colors, animals, type Config } from 'unique-names-generator';
 import { getUserSpacePath } from "./utils"
@@ -53,7 +54,7 @@ const auth = {
       this.listenProfile()
 
       await friends.init()
-
+      await groups.init()
       console.log("Logged in")
     } catch (error: any) {
       if (error.name === "SyntaxError") {

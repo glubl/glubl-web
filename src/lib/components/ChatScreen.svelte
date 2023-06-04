@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Icon } from "@steeze-ui/svelte-icon";
   import { PaperAirplane, Phone, User } from "@steeze-ui/heroicons";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import * as dayjs from "dayjs";
   import { friendRTCStore, myProfileStore, screenStore, friendChannelStore } from "../stores";
   import { getGun } from "../db";
@@ -16,8 +16,8 @@
   const { pair } = getGun();
   let myProfile = $myProfileStore!
   let profileUnsub: Unsubscriber = myProfileStore.subscribe(v => v && (myProfile = v))
-  let chats = new SortedArray<ChatMessageGun>((a, b) => b.ts - a.ts)
-    
+  
+  let chatMap: {[pub: string]: SortedArray<ChatMessageGun>} = {}
   let profilePathMap: Map<string, FriendProfile>;
   let isWebRTC: boolean
   let channel: GroupNode
@@ -28,16 +28,23 @@
       previousChannel.off("recv-chat", insertMsg)
     }
     channel = ($friendChannelStore)[friend.pub]
-    channel.readAll()
-      .then(v => {
-        channel.on("recv-chat", insertMsg)
-        for (const [key, message] of v) {
-          insertMsg(message)
-        }
-      })
+    let fut: Promise<Map<string, any>>
+    if (!chatMap[friend.pub]) {
+      fut = channel.readAll()
+      chatMap[friend.pub] = new SortedArray<ChatMessageGun>((a, b) => b.ts - a.ts)
+    } else {
+      fut = channel.read()
+    }
+    fut.then(v => {
+      channel.on("recv-chat", insertMsg)
+      for (const [key, message] of v) {
+        insertMsg(message)
+      }
+    })
     isWebRTC = !!$friendRTCStore.get(friend.pub)
     previousFriend = friend
     previousChannel = channel
+    
   }
   friendRTCStore.subscribe(v => isWebRTC = v.has(friend.pub))
   $: {
@@ -46,13 +53,16 @@
       [pair.pub, myProfile]
     ])
   }
-  $: onCall = get(screenStore.currentActiveCall);
+  let onCall = false
+  $: {
+    onCall = get(screenStore.currentActiveCall) === friend.pub
+  }
+  let screenUnsub = screenStore.currentActiveCall.subscribe(pub => onCall = pub === friend.pub)
 
   function insertMsg(msg: ChatMessageGun, key?: string, unread?: boolean, meta?: any, doRead?: () => void) {
     if (!msg.msg || !msg.ts || !msg.by || !profilePathMap.has(msg.by)) return
     if (doRead) doRead()
-    chats.insert(msg)
-    chats = chats
+    ;(chatMap[friend.pub]??=new SortedArray<ChatMessageGun>((a, b) => b.ts - a.ts)).insert(msg)
   }
   async function sendMessage() {
     if (!messageInput) return;
@@ -65,17 +75,19 @@
     channel.emit('send-chat', msgData)
     messageInput = "";
   }
-  
 
   onDestroy(() => {
     if (profileUnsub)
       profileUnsub()
     channel.off("recv-chat", insertMsg)
+    screenUnsub()
   });
 
   let messageInput: string;
   let viewport: Element;
   let contents: Element;
+  let startCall: () => void
+  let stopCall: () => void
   $: viewport, contents;
 </script>
 
@@ -83,20 +95,54 @@
   id="chat-screen"
   class="flex flex-col h-screen justify-end flex-1 w-full relative"
 >
-  <!-- Causes slow when unload -->
-  <!-- <VirtualList items={chats} let:item={chat}> -->
-  {#if onCall}
-    <div id="call-section h-60 w-full overflow-y-hidden">
-      <CallScreen friend={friend} />
-    </div>
-  {/if}
-  <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-16 pb-2">
+
+  <div
+    id="header"
+    class="prose flex flex-row items-center {get(screenStore.currentActiveCall)
+      ? 'top-60'
+      : 'top-0'} h-14 w-[inherit] max-w-[inherit] py-4 px-2 backdrop-blur shadow-lg bg-base-200/90"
+    >
+    <NavButton />
+    {#if friend.username}
+      <h4 class="m-0 ml-2"><strong>{friend.username}</strong></h4>
+    {/if}
+    <div class="w-2" />
+    <button
+      on:click={() => navigator.clipboard.writeText(friend.pub)}
+      class="min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5"
+    >
+      <code class="truncate max-w-fit">{friend.pub.slice(0, 12)}...</code>
+    </button>
+    <button
+      id="friendrtc"
+      class={`ml-2 min-w-0 flex items-center justify-center rounded-lg bg-accent h-fit translate-y-[1px] text-sm mt-.5 transition-all ease-in-out duration-300 overflow-hidden ${ isWebRTC ? 'w-16' : 'w-0' }`}
+    >
+      <code class="text-base-300">WebRTC</code>
+    </button>
+    <div class="flex-1" />
+    {#if !onCall}
+      <button
+        class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
+        on:click={() => {
+          if (startCall)
+            startCall()
+        }}
+      >
+        <Icon src={Phone} theme="solid" class="w-5 h-5 color-gray-900" />
+      </button>
+    {/if}
+  </div>
+  <div class={`call-section w-full transition-all ease-in-out duration-300 overflow-hidden ${ onCall ? 'h-60' : 'h-0' }`}>
+    <CallScreen bind:startCall={startCall} bind:stopCall={stopCall} friend={friend} />
+  </div>
+
+  <div bind:this={viewport} id="viewport" class="h-full overflow-y-auto flex flex-col-reverse pt-2 pb-2">
     <div bind:this={contents} id="contents" class="flex h-fit w-full flex-col-reverse">
-      {#each [...chats.values()] as chat, i}
+      {#each [...(chatMap[friend.pub]).values()] as chat, i}
         {#if 
-          i != chats.length-1
-          && chat.by == (chats.get(i + 1)?.by)
-          && (chat.ts - (chats.get(i + 1)?.ts??0)) < 60000
+          i != chatMap[friend.pub].length-1
+          && chat.by == (chatMap[friend.pub].get(i + 1)?.by)
+          && (chat.ts - (chatMap[friend.pub].get(i + 1)?.ts??0)) < 60000
         }
           <div class="py-0.5 pr-8 flex flex-row w-full group hover:bg-base-200">
             <div
@@ -141,51 +187,7 @@
       {/each}
     </div>
   </div>
-  <!-- </VirtualList> -->
-
-  <!-- <Svrollbar
-    initiallyVisible={true}
-    {viewport}
-    {contents}
-  /> -->
-
-  <div
-    id="header"
-    class="prose flex flex-row items-center {get(screenStore.currentActiveCall)
-      ? 'top-60'
-      : 'top-0'} h-14 w-[inherit] max-w-[inherit] py-4 px-2 backdrop-blur absolute shadow-lg bg-base-200/90"
-  >
-    <NavButton />
-    {#if friend.username}
-      <h4 class="m-0 ml-2"><strong>{friend.username}</strong></h4>
-    {/if}
-    <div class="w-2" />
-    <button
-      on:click={() => navigator.clipboard.writeText(friend.pub)}
-      class="min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5"
-    >
-      <code class="truncate max-w-fit">{friend.pub.slice(0, 12)}...</code>
-    </button>
-    <button
-      id="friendrtc"
-      class={`ml-2 min-w-0 flex items-center justify-center rounded-lg bg-accent h-fit translate-y-[1px] text-sm mt-.5 transition-all ease-in-out duration-300 overflow-hidden ${ isWebRTC ? 'w-16' : 'w-0' }`}
-    >
-      <code class="text-base-300">WebRTC</code>
-    </button>
-    <div class="flex-1" />
-    {#if !onCall}
-      <button
-        class="h-fit w-fit btn btn-outline btn-base btn-accent btn-xs p-3 !outline-none !border-none"
-        on:click={() => {
-          console.log(`Calling ${friend.username}...`);
-          screenStore.currentActiveCall.set(true);
-        }}
-      >
-        <Icon src={Phone} theme="solid" class="w-5 h-5 color-gray-900" />
-      </button>
-    {/if}
-  </div>
-
+  
   <!-- Input -->
   <div class="flex flex-row bg-transparent mx-3 pb-4 btn-group">
     <input
@@ -206,15 +208,3 @@
     </button>
   </div>
 </div>
-
-<!-- <style>
-  #chat-screen #viewport {
-    /* hide scrollbar */
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  #chat-screen #viewport::-webkit-scrollbar {
-    /* hide scrollbar */
-    display: none;
-  }
-</style> -->

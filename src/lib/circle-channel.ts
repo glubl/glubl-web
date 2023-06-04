@@ -236,6 +236,7 @@ export type GroupData = {
             epub: string
         } 
     }
+    meta: /** encrypted w/ group secret */ any
 }
 
 //Inside member's user space
@@ -245,9 +246,6 @@ export type GroupsJoined = /** encrypted */ {
         owner: {
             pub: string,
             epub: string
-        },
-        msgs: {
-            [ts: string]: string
         }
     }
 }
@@ -313,7 +311,8 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
         }
         return this._nextNode
     }
-
+    private _metadata: any
+    get metadata() { return this._metadata }
     constructor(
         readonly gun: IGunChain<any, any, any, string>,
         readonly path: string,
@@ -377,6 +376,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
             throw 'Cannot get member data!'
 
         var groupDataEnc = ''
+        var metaGun: IGunChain<any, any, any, string>
         root.get(`${this.path}/dat`).get(myPath).on(async (v, _, __, eve) => {
             // this.groupDataEve = eve
             if (!v) {
@@ -396,7 +396,12 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
             this._id = dat.id
             this.myGroupPath = await getUserSpacePath(this.myPair.pub, this.groupSecret)
 
-
+            if (!metaGun) {
+                metaGun = groupGun.get("meta").on(async (v, k, m, eve) => {
+                    this._metadata = await SEA.decrypt(v, this.groupSecret!)
+                })
+            }
+            
             // Determine neighbour node
             if (dat.next) {
                 this._isCurrent = false
@@ -569,7 +574,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
                 const newMembers = new Set(members ??= Array.from(oldMembers))
                 const oldNewMember = Array.from(newMembers).filter(m => oldMembers.has(m))
                 
-                const { groupId, groupPath, groupPair } = await GroupNode.createNew(root as any, owner, members, this.path, oldNewMember)
+                const { groupId, groupPath, groupPair } = await GroupNode.createNew(root as any, owner, members, this.path, oldNewMember, this._metadata)
                 const groupData = Object.fromEntries(await Promise.all(Array.from(oldMembers).map(async (m) => {
                     const shared = await SEA.secret(m.epub, owner)
                     return Promise.all([
@@ -595,7 +600,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
 
     rotate?: (owner: ISEAPair, member?: {pub: string, epub: string}[]) => Promise<{ groupId: string, groupPath: string, groupPair: ISEAPair }>
 
-    static async createNew(gun: IGunChain<any, any, any, string>, owner: ISEAPair, members: {pub: string, epub: string}[], prev?: string, prevMembers?: {pub: string, epub: string}[]) {
+    static async createNew(gun: IGunChain<any, any, any, string>, owner: ISEAPair, members: {pub: string, epub: string}[], prev?: string, prevMembers?: {pub: string, epub: string}[], metadata?: any) {
         const groupPair = await SEA.pair()
         const groupKey = randStr(43)
         const groupId = (gun as any).back("opt.uuid")() as string
@@ -605,7 +610,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
         memberSet.add({pub: owner.pub, epub: owner.epub})
         members = Array.from(memberSet)
         const prevMemberSet = new Set(prevMembers ??= members)
-        const [groupData, memberDataEnc] = await Promise.all([
+        const [groupData, memberDataEnc, metadataEnc] = await Promise.all([
             Promise.all(members.map(async (m) => {
                 const shared = await SEA.secret(m.epub, owner)
                 return Promise.all([
@@ -631,16 +636,19 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
                     }))
                 ),
                 groupKey
-            )
+            ),
+            SEA.encrypt(metadata, groupKey)
         ]) 
         const data: {
             dat: {
                 [path: string]: string
             },
-            mem: string
+            mem: string,
+            meta: string
         } = {
             dat: Object.fromEntries(groupData),
-            mem: memberDataEnc
+            mem: memberDataEnc,
+            meta: metadataEnc
         }
 
         // Store group pair inside group data using owner's key
