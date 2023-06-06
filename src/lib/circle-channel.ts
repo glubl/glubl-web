@@ -609,6 +609,8 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
         let memberSet = new Set(members)
         memberSet.add({pub: owner.pub, epub: owner.epub})
         members = Array.from(memberSet)
+        metadata ??= {}
+        metadata.id = groupId
         const prevMemberSet = new Set(prevMembers ??= members)
         const [groupData, memberDataEnc, metadataEnc] = await Promise.all([
             Promise.all(members.map(async (m) => {
