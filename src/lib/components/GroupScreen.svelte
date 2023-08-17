@@ -3,21 +3,21 @@
   import { PaperAirplane, User, Users } from "@steeze-ui/heroicons";
   import { onDestroy } from "svelte";
   import * as dayjs from "dayjs";
-  import { friendsStore, myProfileStore, screenStore } from "../stores";
+  import { friendsStore, screenStore } from "../stores";
   import { getGun } from "../db";
   import { get, type Unsubscriber } from "svelte/store";
   import * as _ from "lodash";
   import NavButton from "./NavButton.svelte";
   import { SortedArray } from '@shlappas/sorted-array'
   import type { GroupNode } from "../circle-channel";
+  import ProfileMenuItem from "./ProfileMenuItem.svelte";
+  import CodeButton from "./CodeButton.svelte";
   
   export let group: GroupNode;
   let previousGroup: GroupNode
 
   const { pair } = getGun();
-  let myProfile = $myProfileStore!
   let friends = $friendsStore
-  let profileUnsub: Unsubscriber = myProfileStore.subscribe(v => v && (myProfile = v))
   let friendUnsub: Unsubscriber = friendsStore.subscribe(v => friends = v)
   
   let chatMap: {[id: string]: SortedArray<ChatMessageGun>} = {}
@@ -59,7 +59,6 @@
   }
 
   onDestroy(() => {
-    profileUnsub()
     friendUnsub()
     group.off("recv-chat", insertMsg)
   });
@@ -83,7 +82,7 @@
 
 
 <div
-  id="chat-screen"
+  id="group-screen"
   class="flex flex-row-reverse h-screen flex-1 w-full relative"
 >
   <div class="flex flex-col min-w-0 items-center h-screen bg-base-200 shadow-lg z-50 w-80">
@@ -95,15 +94,10 @@
       />
     </div>
     <p class="mt-2 font-bold text-3xl">{group.metadata.name}</p>
-    <button
-      on:click={() => navigator.clipboard.writeText(group.id||'')}
-      class="mt-1 px-2 py-1 min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm"
-    >
-      <code class="truncate max-w-fit text-xs">{group.id||''}</code>
-    </button>
+    <CodeButton text={group.id}/>
     <div class="divider mx-8">Members</div>
 
-    <div id="viewport" class="h-full overflow-y-auto flex flex-col pb-2">
+    <div id="viewport" class="h-full w-full overflow-y-auto flex flex-col pb-2">
       <div id="contents" class="flex w-full flex-col">
         <div class="flex flex-col flex-1 px-2">
           {#each checkedMembers as mem (mem.pub)}
@@ -127,11 +121,7 @@
                 {mem.username || mem.pub}
               </div>
             </button> -->
-            <div class="flex flex-row items-center min-w-0">
-              <div class="min-w-0 w-full flex flex-col flex-1 gap-y-2 items-start overflow-hidden">
-                <code class="truncate overflow-hidden flex flex-1 text-sm py-1 px-2 rounded-lg bg-base-300">{mem.username || mem.pub}</code>
-              </div>
-            </div>
+            <div class="flex flex-row my-2"><ProfileMenuItem profile={mem}></ProfileMenuItem></div>
           {/each}
         </div>
         
@@ -179,7 +169,6 @@
       {#if group.metadata?.name}
         <h4 class="m-0 ml-2"><strong>{group.metadata?.name}</strong></h4>
       {/if}
-      <div class="w-2" />
       <button
         on:click={() => navigator.clipboard.writeText(group.id||'')}
         class="min-w-0 flex rounded-lg bg-base-300 h-fit translate-y-[1px] text-sm mt-.5"

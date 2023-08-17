@@ -9,6 +9,7 @@
   import { onDestroy, onMount } from "svelte";
   import { friendsStore, groupMembersStore } from "@src/lib/stores";
   import type { Unsubscriber } from "svelte/store";
+  import ProfileMenuItem from "./ProfileMenuItem.svelte";
 
   type Option = FriendProfile & {
     checked: boolean
@@ -86,7 +87,7 @@
   })
 </script>
 
-<div class="flex flex-col items-stretch p-4 space-y-4">
+<div id="group-info" class="flex flex-col items-stretch p-4 space-y-4">
   <div class="flex w-full items-center">
     <h4 class="strong py-2 flex-1">{isRemoving ? "Members" : `Add friend to ${groupName}`}</h4>
     {#if isManaging}
@@ -104,19 +105,7 @@
       {#each isRemoving ? Object.entries(members) : Object.entries(friends) as [pub, profile]}
       <label class="flex flex-col label cursor-pointer items-stretch">
         <div class="flex flex-row space-x-2 h-fit items-center">
-          <div class="avatar online">
-            <div class="w-8 mask mask-squircle">
-              {#if profile.picture}
-                <img class="m-0" src={profile.picture} alt="" />
-              {:else}
-                <Icon src={User} theme="solid" class="color-gray-900" />
-              {/if}
-            </div>
-          </div>
-          <span class="label-text w-fit px-2" 
-            contenteditable="true" 
-          >{profile.username}
-          </span>
+          <div class="flex flex-row"><ProfileMenuItem {profile}></ProfileMenuItem></div>
           <code class="label-text truncate text-sm py-1 px-2 rounded-lg bg-base-300" 
             contenteditable="true" 
           >{pub}</code>

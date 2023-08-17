@@ -7,6 +7,7 @@
   import { User } from "@steeze-ui/heroicons";
   import { onDestroy } from "svelte";
   import { createGroup } from "../groups";
+  import ProfileMenuItem from "./ProfileMenuItem.svelte";
 
   type Option = FriendProfile & {
     checked: boolean;
@@ -94,18 +95,7 @@
                   : "active:bg-accent-focus hover:bg-accent/50"
               }`}
             >
-              <div class="avatar">
-                <div class="w-6 mask mask-squircle">
-                  {#if fren.picture}
-                    <img class="m-0" src={fren.picture} alt="" />
-                  {:else}
-                    <Icon src={User} theme="solid" class="text-secondary-content" />
-                  {/if}
-                </div>
-              </div>
-              <div class="truncate w-full text-secondary-content text-sm font-normal pb-0.5 text-left ml-2">
-                {fren.username || fren.pub}
-              </div>
+              <ProfileMenuItem profile={fren}/>
             </button>
           {/each}
         </div>
@@ -123,18 +113,7 @@
                   : "active:bg-accent-focus hover:bg-accent/50"
               }`}
             >
-              <div class="avatar">
-                <div class="w-6 mask mask-squircle">
-                  {#if fren.picture}
-                    <img class="m-0" src={fren.picture} alt="" />
-                  {:else}
-                    <Icon src={User} theme="solid" class="text-secondary-content" />
-                  {/if}
-                </div>
-              </div>
-              <div class="truncate w-full text-secondary-content text-sm font-normal pb-0.5 text-left ml-2">
-                {fren.username || fren.pub}
-              </div>
+              <ProfileMenuItem profile={fren}/>
             </button>
           {/each}
         </div>

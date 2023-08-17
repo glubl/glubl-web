@@ -3,6 +3,7 @@
   import { Icon } from "@steeze-ui/svelte-icon";
   import { User, UserPlus, Phone } from "@steeze-ui/heroicons";
   import { onDestroy, onMount } from "svelte";
+  import ProfileMenuItem from "./ProfileMenuItem.svelte";
 
   let friends = $friendsStore
   let friendChannels = $friendChannelStore
@@ -87,18 +88,7 @@
           : "hover:bg-base-100 bg-base-300"
       }`}
     >
-      <div class="avatar online">
-        <div class="w-8 mask mask-squircle">
-          {#if friends[pub].picture}
-            <img class="m-0" src={friends[pub].picture} alt="" />
-          {:else}
-            <Icon src={User} theme="solid" class="color-gray-900" />
-          {/if}
-        </div>
-      </div>
-      <div class="truncate w-full text-md font-normal pb-0.5 text-left ml-2">
-        {friends[pub].username || friends[pub].pub}
-      </div>
+      <ProfileMenuItem profile={friends[pub]}></ProfileMenuItem>
       <p class={`h-4 py-2.5 px-1.5 text-xs font-mono bg-accent text-accent-content rounded-full justify-self-end flex justify-center items-center ${ (friendUnreads[pub].n <= 0) && 'hidden' }`}>
         {friendUnreads[pub].n}
       </p>
