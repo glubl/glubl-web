@@ -47,8 +47,8 @@ async function connect(friend: GunHookFriend, opt: GunOptions, gun: IGunInstance
     }
 
     const path = {
-        announce: `~${pair.pub}/spaces/${friend.path}/RT`,
-        listen: `~${friend.pub}/spaces/${friend.mypath}/RT`,
+        announce: `~${pair.pub}/st/${friend.path}`,
+        listen: `~${friend.pub}/st/${friend.mypath}`,
         id: await SEA.sign(await SEA.encrypt(pair.pub, secret), pair),
     }
 

@@ -65,15 +65,17 @@
     ;(chatMap[friend.pub]??=new SortedArray<ChatMessageGun>((a, b) => b.ts - a.ts)).insert(msg)
   }
   async function sendMessage() {
-    if (!messageInput) return;
+    let msg = messageInput || msgInput.value
+    if (!msg) return;
     const time = new Date();
     const msgData: ChatMessageGun = {
-      msg: messageInput,
+      msg: msg,
       ts: time.getTime(),
       by: pair.pub
     };
     channel.emit('send-chat', msgData)
     messageInput = "";
+    msgInput.value = "";
   }
 
   onDestroy(() => {
@@ -86,6 +88,7 @@
   let messageInput: string;
   let viewport: Element;
   let contents: Element;
+  let msgInput: HTMLInputElement;
   let startCall: () => void
   let stopCall: () => void
   $: viewport, contents;
@@ -195,11 +198,12 @@
       placeholder="Message"
       class="flex-1 input input-bordered rounded-tr-none rounded-br-none"
       bind:value={messageInput}
+      bind:this={msgInput}
       on:keydown={(e) => {
         if (e.key == "Enter") sendMessage();
       }}
     />
-    <button class="btn btn-accent p-3" on:click|preventDefault={sendMessage}>
+    <button id="send-msg" class="btn btn-accent p-3" on:click|preventDefault={sendMessage}>
       <Icon
         src={PaperAirplane}
         theme="solid"

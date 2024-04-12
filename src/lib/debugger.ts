@@ -10,7 +10,7 @@ export const Debugger = function(this: any, namespace: string, gState: boolean):
         if (state) {
           for (var m in console)
             if (typeof (console as any)[m] == 'function')
-                obj[m] = (console as any)[m].bind(window.console, `${namespace}:`)
+                obj[m] = (console as any)[m].bind(console, `${namespace}:`)
         } else {
           for (var m in console)
             if (typeof (console as any)[m] == 'function')
@@ -18,7 +18,6 @@ export const Debugger = function(this: any, namespace: string, gState: boolean):
         }
     }
     var state = gState
-    if (typeof window !== "undefined")
-        update()
+    update()
     return obj
   }

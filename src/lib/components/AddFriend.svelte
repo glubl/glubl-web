@@ -129,7 +129,7 @@
               <strong class="ml-1"><p>{r.username}</p></strong>
               <code class="truncate max-w-fit w-full text-sm py-1 px-2 rounded-lg bg-base-300">{r.pub}</code>
             </div>
-            <!-- <button 
+            <button 
               class="p-3 rounded-full bg-base-300/50 hover:bg-base-300"
               on:click|preventDefault={() => {
                 const {pub, epub} = r
@@ -137,7 +137,7 @@
               }}
             >
               <Icon src={Check} theme="solid" class="color-gray-900 w-6 h-6" />
-            </button> -->
+            </button>
           </div>
         </div>
       {/each}

@@ -86,6 +86,7 @@ declare global {
         retry?: number
       }
     }
+    pid: string
   }
 
   var webkitRTCPeerConnection: typeof RTCPeerConnection

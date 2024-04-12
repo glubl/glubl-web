@@ -1,7 +1,7 @@
 import type { GunOptions } from "gun"
 
 export const options : GunOptions = {
-  peers: ["https://gun.glubl.io/gun"] as any,
+  peers: ["https://gun.dirtboll.com/gun"] as any,
   file: "global",
 }
 

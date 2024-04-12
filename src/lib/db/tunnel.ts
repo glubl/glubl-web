@@ -3,8 +3,8 @@ import Gun, { type IGunHookContext, type IGunInstance, type _GunRoot, type IGunO
 import { random } from "lodash"
 import { Debugger } from "../debugger"
 
-const isDebug = false
-const _debugger = Debugger("tunnel", isDebug)
+const isDebug = true
+var _debugger = Debugger("tunnel", isDebug)
 
 if (typeof window !== "undefined") (window as any).EEventEmitter = EventEmitter
 
@@ -35,7 +35,7 @@ export class Tunnel extends EventEmitter<TunnelEvent> {
             let p = ins.create(path)
             callback(p)
             if (connect)
-                setTimeout(() => p.connect(), 1)
+                p.connect()
         })
         
     }
@@ -74,7 +74,7 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
 
     connect() {
         this.listen()
-        setTimeout(() => this.announce(), 50)
+        setTimeout(() => this.announce(), 1)
     }
     disconnect() {
         if (this.event) {
@@ -103,6 +103,7 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
 
     private putSoul?: string
     announce() {
+        console.log(this.id)
         _debugger.log("{{announce}}")
         this.gun.get(this.path.announce)
             .get("id")
@@ -112,6 +113,7 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
                     err?: string;
                     ok?: { '': 1 };
                 }) => {
+                    _debugger.log("AAAAA", ack)
                     if (
                         !ack 
                         || !!ack.err
@@ -142,11 +144,11 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
                     _debugger.log("== 2 == Got soul, sending soul")
                     peer.sendRaw(raw, soul)
                 },
-                { acks: 20 } as any
+                { acks: 999 } as any
             )
     }
 
-    private listen() {
+    listen() {
         if (this.event) {
             this.event.off()
             this.event = undefined
@@ -155,7 +157,12 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
         this.startTime = Gun.state()
         this.gun.get(this.path.listen).get("id").on(async (v, _, meta, event) => {
             this.event = event
-            if (meta.put['>'] < this.startTime || v === this.id) return
+            console.log(v)
+
+            if (v === this.id) {
+                _debugger.log("RET")
+                return
+            }
 
             _debugger.log("== 1 == Got signal, sending soul...")
 
@@ -182,14 +189,18 @@ export class TunnelConnection extends EventEmitter<TunnelConnectionEvents>  {
                     }
                 }
             }
+            _debugger.log("AAAAA")
+            let soul = this.gun._.ask((m) => {
+                _debugger.log("::ask::")
+                try {
+                    callback(m)
+                } catch (error) {
+                    _debugger.error(error)
+                }
+            })
+            _debugger.log("::soul::", soul)
             this.gun._.on('out', {
-                '#': this.gun._.ask((m) => {
-                    try {
-                        callback(m)
-                    } catch (error) {
-                        _debugger.error(error)
-                    }
-                }), 
+                '#': soul, 
                 '@': '' + meta["#"],                                       
                 'ok': {
                     'id': this.id

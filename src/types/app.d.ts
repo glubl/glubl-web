@@ -12,6 +12,14 @@ declare global {
     lastMessageTs: number
   }
 
+  interface IGunChain<TNode, TChainParent, TGunInstance, TKey> {
+    back(path: "opt"): GunOptions 
+  }
+
+  interface IGunInstance<any> {
+    back(path: "opt"): GunOptions 
+  }
+
   type Message = {
     message: string
     ts: number

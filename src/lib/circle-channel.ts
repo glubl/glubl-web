@@ -345,7 +345,7 @@ export class GroupNode extends EventEmitter<GroupNodeEvents> {
             throw "Can't create shared key!"
         const myPath = await getUserSpacePath(myPair.pub, shared)
         const friendPath = await getUserSpacePath(friend.pub, shared)
-        const groupId = await getUserSpacePath([myPair.pub, friend.pub].sort().join(''), shared)
+        const groupId = await getUserSpacePath([myPair.pub, friend.pub].sort().join('15'), shared)
         const node = new GroupNode(gun, '', friend /** Disables group rotation */, myPair, false)
         
         node._members = new Map([
